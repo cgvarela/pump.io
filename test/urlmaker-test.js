@@ -16,7 +16,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     assert = require("assert"),
     vows = require("vows"),
     parseURL = require("url").parse;
@@ -147,6 +149,14 @@ suite.addBatch({
             "its parts are correct": function(url) {
                 // parse query params too
                 var parts = parseURL(url, true);
+
+                // XXX this is an EXTREMELY dirty hack to work around a
+                // problem with Vows under Node 6
+                // See vowsjs/vows#375
+                if (typeof parts.query.hasOwnProperty === "undefined") {
+                    Object.setPrototypeOf(parts.query, {});
+                }
+
                 assert.equal(parts.hostname, "example.com");
                 assert.equal(parts.port, 2342);
                 assert.equal(parts.host, "example.com:2342");
@@ -167,7 +177,7 @@ suite.addBatch({
             var URLMaker = require("../lib/urlmaker").URLMaker;
             URLMaker.hostname = "example.com";
             URLMaker.port     = 3001;
-	    URLMaker.path     = "pumpio";
+            URLMaker.path     = "pumpio";
             return URLMaker;
         },
         "it works": function(URLMaker) {
@@ -217,7 +227,7 @@ suite.addBatch({
                 return {without: URLMaker.makeURL("login"), with: URLMaker.makeURL("/login")};
             },
             "they are equal": function(urls) {
-                assert.equal(urls['with'], urls.without);
+                assert.equal(urls["with"], urls.without);
             }
         }
     }
@@ -229,7 +239,7 @@ suite.addBatch({
             var URLMaker = require("../lib/urlmaker").URLMaker;
             URLMaker.hostname = "example.com";
             URLMaker.port     = 3001;
-	    URLMaker.path     = "pumpio";
+            URLMaker.path     = "pumpio";
             return URLMaker;
         },
         "it works": function(URLMaker) {
@@ -245,7 +255,7 @@ suite.addBatch({
                 return {without: URLMaker.makeURL("login"), with: URLMaker.makeURL("/login")};
             },
             "they are equal": function(urls) {
-                assert.equal(urls['with'], urls.without);
+                assert.equal(urls["with"], urls.without);
             }
         }
     }
@@ -257,47 +267,47 @@ suite.addBatch({
             var URLMaker = require("../lib/urlmaker").URLMaker;
             URLMaker.hostname = "example.com";
             URLMaker.port     = 3001;
-	    return URLMaker;
-	},
-	"it works": function(URLMaker) {
-	    assert.isObject(URLMaker);
-	},
-	"and we have a slash before the path": {
-	    topic: function(URLMaker) {
-		URLMaker.path     = "/pumpio";
-		return URLMaker.makeURL("/login");
-	    },
+            return URLMaker;
+        },
+        "it works": function(URLMaker) {
+            assert.isObject(URLMaker);
+        },
+        "and we have a slash before the path": {
+            topic: function(URLMaker) {
+                URLMaker.path     = "/pumpio";
+                return URLMaker.makeURL("/login");
+            },
             "it works": function(url) {
-		assert.equal(parseURL(url).path, "/pumpio/login");
-	    }
-	},
-	"and we have a slash after the path": {
-	    topic: function(URLMaker) {
-		URLMaker.path     = "pumpio/";
-		return URLMaker.makeURL("/login");
-	    },
+                assert.equal(parseURL(url).path, "/pumpio/login");
+            }
+        },
+        "and we have a slash after the path": {
+            topic: function(URLMaker) {
+                URLMaker.path     = "pumpio/";
+                return URLMaker.makeURL("/login");
+            },
             "it works": function(url) {
-		assert.equal(parseURL(url).path, "/pumpio/login");
-	    }
-	},
-	"and we have a slash on both sides of the path": {
-	    topic: function(URLMaker) {
-		URLMaker.path = "/pumpio/";
-		return URLMaker.makeURL("/login");
-	    },
+                assert.equal(parseURL(url).path, "/pumpio/login");
+            }
+        },
+        "and we have a slash on both sides of the path": {
+            topic: function(URLMaker) {
+                URLMaker.path = "/pumpio/";
+                return URLMaker.makeURL("/login");
+            },
             "it works": function(url) {
-		assert.equal(parseURL(url).path, "/pumpio/login");
-	    }
-	},
-	"and we have no slashes in the path": {
-	    topic: function(URLMaker) {
-		URLMaker.path = "pumpio";
-		return URLMaker.makeURL("/login");
-	    },
+                assert.equal(parseURL(url).path, "/pumpio/login");
+            }
+        },
+        "and we have no slashes in the path": {
+            topic: function(URLMaker) {
+                URLMaker.path = "pumpio";
+                return URLMaker.makeURL("/login");
+            },
             "it works": function(url) {
-		assert.equal(parseURL(url).path, "/pumpio/login");
-	    }
-	},
+                assert.equal(parseURL(url).path, "/pumpio/login");
+            }
+        },
         teardown: function(URLMaker) {
             URLMaker.hostname = null;
             URLMaker.port = null;
@@ -312,43 +322,43 @@ suite.addBatch({
             var URLMaker = require("../lib/urlmaker").URLMaker;
             URLMaker.hostname = "example.com";
             URLMaker.port     = 3001;
-	    return URLMaker;
-	},
-	"it works": function(URLMaker) {
-	    assert.isObject(URLMaker);
-	},
-	"and we make a default host": {
-	    topic: function(URLMaker) {
-		return URLMaker.makeHost();
-	    },
+            return URLMaker;
+        },
+        "it works": function(URLMaker) {
+            assert.isObject(URLMaker);
+        },
+        "and we make a default host": {
+            topic: function(URLMaker) {
+                return URLMaker.makeHost();
+            },
             "it works": function(host) {
-		assert.equal(host, "example.com:3001");
-	    }
-	},
-	"and we make a host with the default port": {
-	    topic: function(URLMaker) {
-		return URLMaker.makeHost("example.net", 80);
-	    },
+                assert.equal(host, "example.com:3001");
+            }
+        },
+        "and we make a host with the default port": {
+            topic: function(URLMaker) {
+                return URLMaker.makeHost("example.net", 80);
+            },
             "it works": function(host) {
-		assert.equal(host, "example.net");
-	    }
-	},
-	"and we make a host with the default SSL port": {
-	    topic: function(URLMaker) {
-		return URLMaker.makeHost("example.net", 443);
-	    },
+                assert.equal(host, "example.net");
+            }
+        },
+        "and we make a host with the default SSL port": {
+            topic: function(URLMaker) {
+                return URLMaker.makeHost("example.net", 443);
+            },
             "it works": function(host) {
-		assert.equal(host, "example.net");
-	    }
-	},
-	"and we make a host with a non-default port": {
-	    topic: function(URLMaker) {
-		return URLMaker.makeHost("example.net", 8080);
-	    },
+                assert.equal(host, "example.net");
+            }
+        },
+        "and we make a host with a non-default port": {
+            topic: function(URLMaker) {
+                return URLMaker.makeHost("example.net", 8080);
+            },
             "it works": function(host) {
-		assert.equal(host, "example.net:8080");
-	    }
-	}
+                assert.equal(host, "example.net:8080");
+            }
+        }
     }
 });
 
@@ -358,29 +368,29 @@ suite.addBatch({
             var URLMaker = require("../lib/urlmaker").URLMaker;
             URLMaker.hostname = "example.com";
             URLMaker.port     = 3001;
-	    return URLMaker;
-	},
-	"it works": function(URLMaker) {
-	    assert.isObject(URLMaker);
-	},
-	"and we make a path": {
-	    topic: function(URLMaker) {
-		URLMaker.path = null;
-		return URLMaker.makePath("login");
-	    },
+            return URLMaker;
+        },
+        "it works": function(URLMaker) {
+            assert.isObject(URLMaker);
+        },
+        "and we make a path": {
+            topic: function(URLMaker) {
+                URLMaker.path = null;
+                return URLMaker.makePath("login");
+            },
             "it works": function(path) {
-		assert.equal(path, "/login");
-	    }
-	},
-	"and we make a path with a prefix": {
-	    topic: function(URLMaker) {
-		URLMaker.path = "pumpio";
-		return URLMaker.makePath("login");
-	    },
+                assert.equal(path, "/login");
+            }
+        },
+        "and we make a path with a prefix": {
+            topic: function(URLMaker) {
+                URLMaker.path = "pumpio";
+                return URLMaker.makePath("login");
+            },
             "it works": function(path) {
-		assert.equal(path, "/pumpio/login");
-	    }
-	}
+                assert.equal(path, "/pumpio/login");
+            }
+        }
     }
 });
 

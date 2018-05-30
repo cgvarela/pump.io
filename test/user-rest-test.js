@@ -16,16 +16,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     http = require("http"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     OAuth = require("oauth-evanp").OAuth,
     version = require("../lib/version").version,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    setupApp = apputil.setupApp,
     newClient = oauthutil.newClient,
     newPair = oauthutil.newPair,
     register = oauthutil.register;
@@ -163,7 +166,7 @@ suite.addBatch({
                 assert.ifError(err);
             },
 
-            "and we get the options on the user api endpoint": 
+            "and we get the options on the user api endpoint":
             httputil.endpoint("/api/user/zardoz", ["GET", "PUT", "DELETE"]),
 
             "and we GET the user data without OAuth credentials": {
@@ -412,7 +415,7 @@ suite.addBatch({
             "and we PUT new user data with client credentials and a different user's access token": {
                 topic: function(user, cl) {
                     var cb = this.callback;
-                    
+
                     Step(
                         function() {
                             newPair(cl, "themistocles", "salamis!", this);

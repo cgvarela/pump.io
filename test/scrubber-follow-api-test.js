@@ -16,18 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
     newClient = oauthutil.newClient,
@@ -37,10 +40,10 @@ var DANGEROUS = "This is a <script>alert('Boo!')</script> dangerous string.";
 var HARMLESS = "This is a harmless string.";
 
 var deepProperty = function(object, property) {
-    var i = property.indexOf('.');
+    var i = property.indexOf(".");
     if (!object) {
         return null;
-    } else if (i == -1) { // no dots
+    } else if (i === -1) { // no dots
         return object[property];
     } else {
         return deepProperty(object[property.substr(0, i)], property.substr(i + 1));
@@ -103,19 +106,8 @@ var suite = vows.describe("Scrubber follow API test");
 
 // A batch to test posting to the regular feed endpoint
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get a new set of credentials": {
             topic: function() {
                 oauthutil.newCredentials("shatner", "deep*fried*turkey", this.callback);
@@ -124,31 +116,31 @@ suite.addBatch({
                 assert.ifError(err);
                 assert.isObject(cred);
             },
-            "and we follow an object with good content": 
+            "and we follow an object with good content":
             goodFollow({objectType: "person",
                         id: "urn:uuid:31981bb2-3293-11e2-98b1-0024beb67924",
                         content: HARMLESS
                        },
                        "content"),
-            "and we follow an object with bad content": 
+            "and we follow an object with bad content":
             badFollow({objectType: "person",
                        id: "urn:uuid:3198b87e-3293-11e2-99c3-0024beb67924",
                        content: DANGEROUS
                       },
                       "content"),
-            "and we follow an object with good summary": 
+            "and we follow an object with good summary":
             goodFollow({objectType: "person",
                         id: "urn:uuid:31995450-3293-11e2-a166-0024beb67924",
                         summary: HARMLESS
                        },
                        "summary"),
-            "and we follow an object with bad summary": 
+            "and we follow an object with bad summary":
             badFollow({objectType: "person",
                        id: "urn:uuid:3199f00e-3293-11e2-a5ac-0024beb67924",
                        summary: DANGEROUS
                       },
                       "summary"),
-            "and we follow an object with a private member": 
+            "and we follow an object with a private member":
             privateFollow({objectType: "person",
                            id: "urn:uuid:75f81018-36ae-11e2-ad19-70f1a154e1aa",
                            _user: true,
@@ -156,7 +148,7 @@ suite.addBatch({
                           },
                           "_user")
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

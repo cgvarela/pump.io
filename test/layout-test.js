@@ -16,12 +16,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     Browser = require("zombie"),
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig;
+    withAppSetup = apputil.withAppSetup,
+    setupAppConfig = apputil.setupAppConfig;
 
 var suite = vows.describe("layout test");
 
@@ -42,39 +45,44 @@ suite.addBatch({
         },
         "and we visit the root URL": {
             topic: function() {
-                var browser;
-                browser = new Browser();
+                var cb = this.callback,
+                    browser = new Browser();
 
-                browser.visit("http://localhost:4815/", this.callback);
+                browser.visit("http://localhost:4815/", function() {
+                    cb(!browser.success, browser);
+                });
+            },
+            teardown: function(br) {
+                br.window.close();
             },
             "it works": function(err, br) {
                 assert.ifError(err);
-                assert.isTrue(br.success);
+                br.assert.success();
             },
             "and we look at the results": {
                 topic: function(br) {
                     return br;
                 },
                 "it has the right title": function(br) {
-                    assert.equal(br.text("title"), "Welcome - Test");
+                    br.assert.text("title", "Welcome - Test");
                 },
                 "it has a top navbar": function(br) {
-                    assert.ok(br.query("div.navbar"));
+                    br.assert.element("div.navbar");
                 },
                 "it has a brand link": function(br) {
-                    assert.equal(br.text("a.brand"), "Test");
+                    br.assert.text("a.brand", "Test");
                 },
                 "it has a registration link": function(br) {
-                    assert.equal(br.text("div.navbar a#register"), "Register");
+                    br.assert.text("div.navbar a#register", "Register");
                 },
                 "it has a login link": function(br) {
-                    assert.equal(br.text("div.navbar a#login"), "Login");
+                    br.assert.text("div.navbar a#login", "Login");
                 },
                 "it has a footer": function(br) {
-                    assert.ok(br.query("footer"));
+                    br.assert.element("footer");
                 },
                 "it has a link to pump.io in the footer": function(br) {
-                    assert.equal(br.text("footer a[href='http://pump.io/']"), "pump.io");
+                    br.assert.text("footer a[href='http://pump.io/']", "pump.io");
                 }
             }
         }

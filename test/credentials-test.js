@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -61,7 +63,7 @@ mb["When we require the credentials module"]
       assert.isString(created.host_and_id);
       assert.isString(created.created);
       assert.isString(created.updated);
-};
+  };
 
 suite.addBatch(mb);
 

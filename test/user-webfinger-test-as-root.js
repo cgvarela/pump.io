@@ -16,21 +16,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
-    oauthutil = require("./lib/oauth");
+    oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app");
 
 var suite = vows.describe("Test Webfinger for user profile IDs");
 
 suite.addBatch({
     "When we set up the app": {
         topic: function() {
-            oauthutil.setupApp(80, "social.localhost", this.callback);
+            apputil.setupApp(80, "social.localhost", this.callback);
         },
         teardown: function(app) {
             app.close();

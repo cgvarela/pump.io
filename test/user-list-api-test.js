@@ -16,10 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     fs = require("fs"),
     path = require("path"),
     querystring = require("querystring"),
@@ -27,7 +29,8 @@ var assert = require("assert"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp;
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup;
 
 var suite = vows.describe("user list API");
 
@@ -57,8 +60,8 @@ var assertGoodUser = function(user) {
 };
 
 var register = function(cl, params, callback) {
-    httputil.postJSON("http://localhost:4815/api/users", 
-                      {consumer_key: cl.client_id, consumer_secret: cl.client_secret}, 
+    httputil.postJSON("http://localhost:4815/api/users",
+                      {consumer_key: cl.client_id, consumer_secret: cl.client_secret},
                       params,
                       callback);
 };
@@ -160,20 +163,8 @@ var doubleRegisterFail = function(first, second) {
     };
 };
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            var cb = this.callback;
-            setupApp(cb);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we check the user list endpoint": {
             topic: function() {
                 httputil.options("localhost", 4815, "/api/users", this.callback);
@@ -229,21 +220,21 @@ suite.addBatch({
                 assert.isString(cl.client_id);
                 assert.isString(cl.client_secret);
             },
-            "and we register a user with nickname and password": 
+            "and we register a user with nickname and password":
             registerSucceed({nickname: "withcred", password: "very!secret"}),
-            "and we register a user with nickname and no password": 
+            "and we register a user with nickname and no password":
             registerFail({nickname: "nopass"}),
-            "and we register a user with password and no nickname": 
+            "and we register a user with password and no nickname":
             registerFail({password: "too+secret"}),
-            "and we register a user with a short password": 
+            "and we register a user with a short password":
             registerFail({nickname: "shorty", password: "carpet"}),
-            "and we register a user with an all-alpha password": 
+            "and we register a user with an all-alpha password":
             registerFail({nickname: "allalpha", password: "carpeted"}),
-            "and we register a user with an all-numeric password": 
+            "and we register a user with an all-numeric password":
             registerFail({nickname: "allnumeric", password: "12345678"}),
-            "and we register a user with a well-known bad password": 
+            "and we register a user with a well-known bad password":
             registerFail({nickname: "unoriginal", password: "rush2112"}),
-            "and we register a user with no data": 
+            "and we register a user with no data":
             registerFail({}),
             "and we register two unrelated users":
             doubleRegisterSucceed({nickname: "able", password: "i-sure-am"},
@@ -257,14 +248,14 @@ suite.addBatch({
 
                     oa = new OAuth(null, // request endpoint N/A for 2-legged OAuth
                                    null, // access endpoint N/A for 2-legged OAuth
-                                   cl.client_id, 
-                                   cl.client_secret, 
+                                   cl.client_id,
+                                   cl.client_secret,
                                    "1.0",
                                    null,
                                    "HMAC-SHA1",
                                    null, // nonce size; use default
                                    {"User-Agent": "pump.io/"+version});
-                    
+
                     toSend = querystring.stringify({nickname: "delta", password: "dawn"});
 
                     oa.post("http://localhost:4815/api/users", null, null, toSend, "application/x-www-form-urlencoded", function(err, data, response) {
@@ -280,21 +271,11 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            var cb = this.callback;
-            setupApp(cb);
-        },
-        teardown: function(app) {
-            app.close();
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we create a client using the api": {
             topic: function() {
                 var cb = this.callback;
@@ -509,10 +490,10 @@ suite.addBatch({
                                         var i, group = this.group();
                                         for (i = 0; i < 50; i += 10) {
                                             httputil.getJSON("http://localhost:4815/api/users?offset="+i+"&count=10",
-                                                             {consumer_key: cl.client_id, 
+                                                             {consumer_key: cl.client_id,
                                                               consumer_secret: cl.client_secret},
                                                              group());
-                                            }
+                                        }
                                     },
                                     function(err, collections) {
                                         var j, chunks = [];
@@ -557,23 +538,23 @@ suite.addBatch({
                                 Step(
                                     function() {
                                         httputil.getJSON("http://localhost:4815/api/users",
-                                                         {consumer_key: cl.client_id, 
+                                                         {consumer_key: cl.client_id,
                                                           consumer_secret: cl.client_secret},
                                                          this);
                                     },
                                     function(err, body, resp) {
                                         if (err) throw err;
                                         all = all.concat(body.items);
-                                        httputil.getJSON(body.links.next.href, 
-                                                         {consumer_key: cl.client_id, 
+                                        httputil.getJSON(body.links.next.href,
+                                                         {consumer_key: cl.client_id,
                                                           consumer_secret: cl.client_secret},
                                                          this);
                                     },
                                     function(err, body, resp) {
                                         if (err) throw err;
                                         all = all.concat(body.items);
-                                        httputil.getJSON(body.links.next.href, 
-                                                         {consumer_key: cl.client_id, 
+                                        httputil.getJSON(body.links.next.href,
+                                                         {consumer_key: cl.client_id,
                                                           consumer_secret: cl.client_secret},
                                                          this);
                                     },
@@ -607,7 +588,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

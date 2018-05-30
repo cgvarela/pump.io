@@ -16,14 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var assert = require("assert"),
+"use strict";
+
+var fs = require("fs"),
+    path = require("path"),
     vows = require("vows"),
-    oauthutil = require("./lib/oauth"),
+    assert = require("assert"),
+    apputil = require("./lib/app"),
     Browser = require("zombie"),
     Step = require("step"),
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig,
-    newCredentials = oauthutil.newCredentials;
+    setupAppConfig = apputil.setupAppConfig;
+
+var tc = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
+
+var REDIRECT_URI = "http://localhost:1516/done";
+var user = tc.users[0];
 
 var suite = vows.describe("login web UI test");
 
@@ -42,43 +49,62 @@ suite.addBatch({
         "it works": function(err, app) {
             assert.ifError(err);
         },
-        "and we register a user with the API": {
+        "and we create a browser": {
             topic: function() {
-                 newCredentials("croach", "ihave1onus", "localhost", 4815, this.callback);
+                this.callback(null, new Browser({runScripts: true}));
+                return undefined;
             },
-            "it works": function(err, cred) {
+            "it works": function(err, br) {
                 assert.ifError(err);
-                assert.ok(cred);
+                assert.ok(br);
             },
             "and we visit the login URL": {
-                topic: function() {
-                    var browser;
-                    browser = new Browser({runScripts: true});
-
-                    browser.visit("http://localhost:4815/main/login", this.callback);
+                topic: function(br) {
+                    var cb = this.callback;
+                    br.visit("http://localhost:4815/main/login", function() {
+                        cb(!br.success, br);
+                    });
+                },
+                teardown: function(br) {
+                    br.destroy();
                 },
                 "it works": function(err, br) {
                     assert.ifError(err);
-                    assert.isTrue(br.success);
+                    br.assert.success("ok");
                 },
-                "and we check the content": {
+                "it includes a login div": function(br) {
+                    br.assert.element("div#loginpage");
+                },
+                "it includes a login form": function(br) {
+                    br.assert.element("div#loginpage form");
+                },
+                "the login form has a nickname field": function(br) {
+                    br.assert.element("div#loginpage form input[name=\"nickname\"]");
+                },
+                "the login form has a password field": function(br) {
+                    br.assert.element("div#loginpage form input[name=\"password\"]");
+                },
+                "the login form has a submit button": function(br) {
+                    br.assert.element("div#loginpage form button[type=\"submit\"]");
+                },
+                "and we fill in the login form": {
                     topic: function(br) {
-                        return br;
+                        var callback = this.callback;
+                        br.fill("nickname", user.nickname)
+                          .fill("password", user.password)
+                          .wait({element: "button:not([disabled])[type=submit]"})
+                          .then(function() {
+                              br.pressButton("button:not([disabled])[type=submit]");
+                              br.wait({element: "a#logout"})
+                                .then(function() {
+                                    callback(null, br);
+                                });
+                          });
+                        return undefined;
                     },
-                    "it includes a login div": function(br) {
-                        assert.ok(br.query("div#loginpage"));
-                    },
-                    "it includes a login form": function(br) {
-                        assert.ok(br.query("div#loginpage form"));
-                    },
-                    "the login form has a nickname field": function(br) {
-                        assert.ok(br.query("div#loginpage form input[name=\"nickname\"]"));
-                    },
-                    "the login form has a password field": function(br) {
-                        assert.ok(br.query("div#loginpage form input[name=\"password\"]"));
-                    },
-                    "the login form has a submit button": function(br) {
-                        assert.ok(br.query("div#loginpage form button[type=\"submit\"]"));
+                    "it works": function(err, br) {
+                        assert.ifError(err);
+                        assert.isObject(br);
                     }
                 }
             }

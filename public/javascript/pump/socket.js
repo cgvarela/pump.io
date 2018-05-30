@@ -2,6 +2,9 @@
 //
 // Socket module for the pump.io client UI
 //
+// @licstart  The following is the entire license notice for the
+//  JavaScript code in this page.
+//
 // Copyright 2011-2012, E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +18,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// @licend  The above is the entire license notice
+// for the JavaScript code in this page.
 
 (function(_, $, Backbone, Pump) {
+
+    "use strict";
+
+    var _socket = {
+        reconnecting: false,
+        retryTimeout: 30000,
+        retryAttempts: 0
+    };
 
     Pump.getStreams = function() {
 
@@ -39,7 +53,7 @@
 
     Pump.refreshStreams = function() {
         var streams = Pump.getStreams();
-        
+
         _.each(streams, function(stream, name) {
             stream.getPrev();
         });
@@ -111,6 +125,14 @@
         sock.onopen = function() {
             Pump.socket = sock;
             Pump.followStreams();
+
+            // Reset reconnect
+            if (_socket.retryTimer) {
+                clearTimeout(_socket.retryTimer);
+                _socket.retryTimer = null;
+            }
+            _socket.reconnecting = false;
+            _socket.retryAttempts = 0;
         };
 
         sock.onmessage = function(e) {
@@ -126,9 +148,36 @@
             }
         };
 
-        sock.onclose = function() {
-            // XXX: reconnect?
+        sock.onclose = function(error) {
             Pump.socket = null;
+            // Reconnect on broken connections, not for normal close
+            if (error.code !== 1000) {
+                sock.reconnect(error);
+            }
+        };
+
+        sock.reconnect = function(error) {
+            _socket.retryAttempts++;
+
+            if (_socket.retryTimer) {
+                clearTimeout(_socket.retryTimer);
+                _socket.retryTimer = null;
+            }
+
+            // No more attempts if all transports failed
+            if (error.code === 2000) {
+                Pump.error("Sorry! Your browser doesn't support realtime.");
+                Pump.debug(error);
+                return;
+            }
+
+            if (_socket.reconnecting) {
+                _socket.retryTimer = setTimeout(Pump.setupSocket, _socket.retryTimeout);
+            } else {
+                // The first time try to reconnect immediately
+                _socket.reconnecting = true;
+                Pump.setupSocket();
+            }
         };
     };
 
@@ -143,7 +192,7 @@
         }
 
         var streams = Pump.getStreams();
-        
+
         _.each(streams, function(stream, name) {
             Pump.socket.send(JSON.stringify({cmd: "follow", url: stream.url()}));
         });
@@ -160,7 +209,7 @@
         }
 
         var streams = Pump.getStreams();
-        
+
         _.each(streams, function(stream, name) {
             Pump.socket.send(JSON.stringify({cmd: "unfollow", url: stream.url()}));
         });

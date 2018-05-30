@@ -1,7 +1,7 @@
 // lrdd.js
 //
 // Tests the LRDD XRD endpoint
-// 
+//
 // Copyright 2012 E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,21 +16,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     xml2js = require("xml2js"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     xrdutil = require("./lib/xrd"),
     actutil = require("./lib/activity"),
     pj = httputil.postJSON,
     gj = httputil.getJSON,
     validActivity = actutil.validActivity,
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials;
 
 var suite = vows.describe("LRDD test");
@@ -79,20 +82,9 @@ var webfinger = {
 
 // A batch to test endpoints
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
-        "and we check the lrdd endpoint": 
+suite.addBatch(
+    withAppSetup({
+        "and we check the lrdd endpoint":
         httputil.endpoint("/api/lrdd", ["GET"]),
         "and we get the lrdd endpoint with no uri":
         httputil.getfail("/api/lrdd", 400),
@@ -104,22 +96,11 @@ suite.addBatch({
         httputil.getfail("/api/lrdd?resource=evan@photo.example", 404),
         "and we get the lrdd endpoint with a Webfinger of a non-existent user":
         httputil.getfail("/api/lrdd?resource=evan@localhost", 404)
-    }
-});
+    })
+);
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client and user": {
             topic: function() {
                 newCredentials("alice", "test+pass", this.callback);
@@ -193,7 +174,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

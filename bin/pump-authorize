@@ -2,9 +2,12 @@
 
 // -*- mode: javascript -*-
 
-// authorize.js
+// pump-authorize
 //
-// Get OAuth token
+// get OAuth token for an registered app and registered user
+//
+// called after pump-register-app and pump-register-user
+// asks the user to confirm the access via the website
 //
 // Copyright 2011-2012, E14N https://e14n.com/
 //
@@ -20,14 +23,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var urlfmt = require("url").format,
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     common = require("../lib/pumpclient"),
     clientCred = common.clientCred,
     setUserCred = common.setUserCred,
     OAuth = require("oauth-evanp").OAuth,
-    readline = require('readline'),
+    readline = require("readline"),
     argv = require("optimist")
         .usage("Usage: $0 -u <username>")
         .demand(["u"])
@@ -67,14 +72,23 @@ Step(
         }
     },
     function(err, cred) {
-        var proto = (port == 443) ? "https:" : "http:",
+        var proto = (port === 443) ? "https:" : "http:",
             rtendpoint = urlfmt({protocol: proto,
-                                 host: (port == 80 || port == 443) ? server : server+":"+port,
+                                 host: (port === 80 || port === 443) ? server : server+":"+port,
                                  pathname: "/oauth/request_token"}),
             atendpoint = urlfmt({protocol: proto,
-                                 host: (port == 80 || port == 443) ? server : server+":"+port,
+                                 host: (port === 80 || port === 443) ? server : server+":"+port,
                                  pathname: "/oauth/access_token"});
         if (err) throw err;
+        /*
+          rtendpoint is the request token end point, should be http://<HOST>:<PORT>/oauth/request_token
+          atendpoint is the access token end point, should be http://<HOST>:<PORT>/oauth/access_token
+
+          The next two are from the json file ~/.pump.d/<SERVER>.json :
+          * cred.client_id
+          * cred.client_secret
+
+        */
         oa = new OAuth(rtendpoint,
                        atendpoint,
                        cred.client_id,
@@ -90,11 +104,11 @@ Step(
         var url;
         var callback = this;
         var verifier = "";
-        var proto = (port == 443) ? "https:" : "http:";
+        var proto = (port === 443) ? "https:" : "http:";
         if (err) throw err;
         rt = {token: token, secret: secret};
         url = urlfmt({protocol: proto,
-                      host: (port == 80 || port == 443) ? server : server+":"+port,
+                      host: (port === 80 || port === 443) ? server : server+":"+port,
                       pathname: "/oauth/authorize",
                       query: {oauth_token: rt.token}});
         console.log("Login here: " + url);

@@ -16,36 +16,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     version = require("../lib/version").version,
     urlparse = require("url").parse,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials;
 
 var suite = vows.describe("Activity API test");
 
 // A batch for testing the read-write access to the API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get new credentials": {
             topic: function() {
                 newCredentials("gerold", "just*a*guy", this.callback);
@@ -134,7 +126,7 @@ suite.addBatch({
                             newact.mood = {
                                 displayName: "Friendly"
                             };
-                            // wait 2000 ms to make sure updated != published
+                            // wait 2000 ms to make sure updated !== published
                             setTimeout(function() {
                                 httputil.putJSON(act.id, cred, newact, function(err, contents, result) {
                                     cb(err, {newact: contents, act: act});
@@ -201,6 +193,7 @@ suite.addBatch({
                                 content: "Hello, world!"
                             }
                         };
+
                     httputil.postJSON("http://localhost:4815/api/user/gerold/feed", cred, act, function(err, act, response) {
                         cb(err, act);
                     });
@@ -211,7 +204,7 @@ suite.addBatch({
                 "and we GET the activity with different credentials than the author": {
                     topic: function(act, cred) {
                         var cb = this.callback;
-                        
+
                         Step(
                             function() {
                                 newCredentials("harold", "1077*hastings", this);
@@ -219,7 +212,7 @@ suite.addBatch({
                             function(err, pair) {
                                 var nuke;
                                 if (err) throw err;
-                                nuke = _(cred).clone();
+                                nuke = _.clone(cred);
                                 _(nuke).extend(pair);
                                 httputil.getJSON(act.id, nuke, this);
                             },
@@ -246,7 +239,7 @@ suite.addBatch({
                                     "Content-Type": "application/json"
                                 }
                             };
-                        
+
                         http.get(options, function(response) {
                             if (response.statusCode < 400 || response.statusCode >= 500) {
                                 cb(new Error("Unexpected response code " + response.statusCode));
@@ -264,7 +257,7 @@ suite.addBatch({
                 "and we GET the activity with invalid consumer key": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
+                            nuke = _.clone(cred);
                         nuke.consumer_key = "NOTAKEY";
                         httputil.getJSON(act.id, nuke, function(err, doc, response) {
                             if (err && err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
@@ -283,7 +276,7 @@ suite.addBatch({
                 "and we GET the activity with invalid consumer secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
+                            nuke = _.clone(cred);
                         nuke.consumer_secret = "NOTASECRET";
                         httputil.getJSON(act.id, nuke, function(err, doc, response) {
                             if (err && err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
@@ -302,7 +295,7 @@ suite.addBatch({
                 "and we GET the activity with invalid token": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
+                            nuke = _.clone(cred);
                         nuke.token = "NOTATOKEN";
                         httputil.getJSON(act.id, nuke, function(err, doc, response) {
                             if (err && err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
@@ -321,7 +314,7 @@ suite.addBatch({
                 "and we GET the activity with invalid token secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
+                            nuke = _.clone(cred);
                         nuke.token_secret = "NOTATOKENSECRET";
                         httputil.getJSON(act.id, nuke, function(err, doc, response) {
                             if (err && err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
@@ -359,11 +352,11 @@ suite.addBatch({
                     topic: function(act, cred) {
                         var cb = this.callback,
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
-                        
+
                         Step(
                             function() {
                                 newCredentials("ignace", "katt+brick", this);
@@ -371,8 +364,8 @@ suite.addBatch({
                             function(err, pair) {
                                 var nuke;
                                 if (err) throw err;
-                                nuke = _(cred).clone();
-                                _(nuke).extend(pair);
+                                nuke = _.clone(cred);
+                                _.extend(nuke, pair);
                                 httputil.putJSON(act.id, nuke, newact, this);
                             },
                             function(err, doc, res) {
@@ -405,7 +398,7 @@ suite.addBatch({
                                 }
                             },
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
@@ -429,9 +422,9 @@ suite.addBatch({
                 "and we PUT the activity with invalid consumer key": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone(),
+                            nuke = _.clone(cred),
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
@@ -454,9 +447,9 @@ suite.addBatch({
                 "and we PUT the activity with invalid consumer secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone(),
+                            nuke = _.clone(cred),
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
@@ -479,9 +472,9 @@ suite.addBatch({
                 "and we PUT the activity with invalid token": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone(),
+                            nuke = _.clone(cred),
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
@@ -504,9 +497,9 @@ suite.addBatch({
                 "and we PUT the activity with invalid token secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone(),
+                            nuke = _.clone(cred),
                             newact = JSON.parse(JSON.stringify(act));
-                        
+
                         newact.mood = {
                             displayName: "Friendly"
                         };
@@ -547,7 +540,7 @@ suite.addBatch({
                 "and we DELETE the activity with different credentials than the author": {
                     topic: function(act, cred) {
                         var cb = this.callback;
-                        
+
                         Step(
                             function() {
                                 newCredentials("jeremy", "b4ntham!", this);
@@ -555,8 +548,8 @@ suite.addBatch({
                             function(err, pair) {
                                 var nuke;
                                 if (err) throw err;
-                                nuke = _(cred).clone();
-                                _(nuke).extend(pair);
+                                nuke = _.clone(cred);
+                                _.extend(nuke, pair);
                                 httputil.delJSON(act.id, nuke, this);
                             },
                             function(err, doc, res) {
@@ -605,8 +598,8 @@ suite.addBatch({
                 "and we DELETE the activity with invalid consumer key": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
-                        
+                            nuke = _.clone(cred);
+
                         nuke.consumer_key = "NOTAKEY";
 
                         httputil.delJSON(act.id, nuke, function(err, doc, response) {
@@ -626,8 +619,8 @@ suite.addBatch({
                 "and we DELETE the activity with invalid consumer secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
-                        
+                            nuke = _.clone(cred);
+
                         nuke.consumer_secret = "NOTASECRET";
 
                         httputil.delJSON(act.id, nuke, function(err, doc, response) {
@@ -647,8 +640,8 @@ suite.addBatch({
                 "and we DELETE the activity with invalid token": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
-                        
+                            nuke = _.clone(cred);
+
                         nuke.token = "NOTATOKEN";
 
                         httputil.delJSON(act.id, nuke, function(err, doc, response) {
@@ -668,8 +661,8 @@ suite.addBatch({
                 "and we DELETE the activity with invalid token secret": {
                     topic: function(act, cred) {
                         var cb = this.callback,
-                            nuke = _(cred).clone();
-                        
+                            nuke = _.clone(cred);
+
                         nuke.token_secret = "NOTATOKENSECRET";
 
                         httputil.delJSON(act.id, nuke, function(err, doc, response) {
@@ -770,7 +763,7 @@ suite.addBatch({
                             httputil.getJSON(id, cred, this);
                         },
                         function(err, got, resp) {
-                            if (err && err.statusCode && err.statusCode == 410) {
+                            if (err && err.statusCode && err.statusCode === 410) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -797,8 +790,8 @@ suite.addBatch({
                             }
                         };
 
-                        httputil.putJSON(url, cred, act, function(err, got, resp) {
-                            if (err && err.statusCode && err.statusCode == 404) {
+                    httputil.putJSON(url, cred, act, function(err, got, resp) {
+                            if (err && err.statusCode && err.statusCode === 404) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -817,8 +810,8 @@ suite.addBatch({
                     var cb = this.callback,
                         url = "http://localhost:4815/api/activity/NONEXISTENT";
 
-                        httputil.getJSON(url, cred, function(err, got, resp) {
-                            if (err && err.statusCode && err.statusCode == 404) {
+                    httputil.getJSON(url, cred, function(err, got, resp) {
+                            if (err && err.statusCode && err.statusCode === 404) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -837,8 +830,8 @@ suite.addBatch({
                     var cb = this.callback,
                         url = "http://localhost:4815/api/activity/NONEXISTENT";
 
-                        httputil.delJSON(url, cred, function(err, got, resp) {
-                            if (err && err.statusCode && err.statusCode == 404) {
+                    httputil.delJSON(url, cred, function(err, got, resp) {
+                            if (err && err.statusCode && err.statusCode === 404) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -853,7 +846,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

@@ -16,13 +16,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp;
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup;
 
 var ignore = function(err) {};
 
@@ -124,35 +127,26 @@ var assocSucceed = function(params) {
     };
 };
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            app.close();
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
-        "and we check the client registration endpoint": 
+suite.addBatch(
+    withAppSetup({
+        "and we check the client registration endpoint":
         httputil.endpoint("/api/client/register", ["POST"]),
         "and we register with no type": assocFail({application_name: "Typeless"}),
-        "and we register with an unknown type": 
+        "and we register with an unknown type":
         assocFail({application_name: "Frobnicator",
                    type: "client_frobnicate"
                   }),
-        "and we register to associate with a client ID already set": 
+        "and we register to associate with a client ID already set":
         assocFail({application_name: "Jump The Gun",
                    type: "client_associate",
                    client_id: "I MADE IT MYSELF"
                   }),
-        "and we register to associate with a client secret set": 
+        "and we register to associate with a client secret set":
         assocFail({application_name: "Psst",
                    type: "client_associate",
                    client_secret: "I hate corn."
                   }),
-        "and we register to associate with an unknown application type": 
+        "and we register to associate with an unknown application type":
         assocFail({application_name: "Scoodly",
                    type: "client_associate",
                    application_type: "unknown"
@@ -243,7 +237,7 @@ suite.addBatch({
                     },
                     function(err, res, body) {
                         if (err) throw err;
-                        if (res.statusCode != 200) throw new Error("Bad assoc");
+                        if (res.statusCode !== 200) throw new Error("Bad assoc");
                         var reg = JSON.parse(body);
                         rp({application_name: "No Secret",
                             logo_url: "http://example.com/my-logo-url.jpg",
@@ -274,7 +268,7 @@ suite.addBatch({
                     },
                     function(err, res, body) {
                         if (err) throw err;
-                        if (res.statusCode != 200) throw new Error("Bad assoc");
+                        if (res.statusCode !== 200) throw new Error("Bad assoc");
                         var reg = JSON.parse(body);
                         rp({application_name: "Wrong Secret",
                             logo_url: "http://example.com/my-logo-url.jpg",
@@ -308,7 +302,7 @@ suite.addBatch({
                        application_name: "Original title"},
                       {type: "client_update",
                        application_name: "Updated title"}),
-        "and we update with an unknown application type": 
+        "and we update with an unknown application type":
         updateFail({type: "client_associate",
                     application_name: "Unknown app type"},
                    {application_name: "Unknown app type",
@@ -381,7 +375,7 @@ suite.addBatch({
         updateSucceed({type: "client_associate"},
                       {type: "client_update",
                        redirect_uris: "http://example.org/redirect http://example.org/redirect2 http://example.org/redirect3"})
-    }
-});
+    })
+);
 
 suite["export"](module);

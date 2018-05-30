@@ -2,6 +2,9 @@
 //
 // Backbone router for the pump.io client UI
 //
+// @licstart  The following is the entire license notice for the
+//  JavaScript code in this page.
+//
 // Copyright 2011-2012, E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +18,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// @licend  The above is the entire license notice
+// for the JavaScript code in this page.
 
 (function(_, $, Backbone, Pump) {
+
+    "use strict";
 
     Pump.Router = Backbone.Router.extend({
 
         routes: {
-            "":                       "home",    
-            ":nickname":              "profile",   
-            ":nickname/favorites":    "favorites",  
-            ":nickname/following":    "following",  
-            ":nickname/followers":    "followers",  
+            "":                       "home",
+            ":nickname":              "profile",
+            ":nickname/favorites":    "favorites",
+            ":nickname/following":    "following",
+            ":nickname/followers":    "followers",
             ":nickname/activity/:id": "activity",
             ":nickname/lists":        "lists",
             ":nickname/list/:uuid":   "list",
@@ -39,7 +47,8 @@
             "main/remote":            "remote",
             "main/recover":           "recover",
             "main/recover-sent":      "recoverSent",
-            "main/recover/:code":      "recoverCode"
+            "main/recover/:code":     "recoverCode",
+            "*path(?*querystring)": "loadFromServer"
         },
 
         register: function() {
@@ -395,6 +404,15 @@
                                          Pump.body.endLoad();
                                      });
             });
+        },
+
+        loadFromServer: function(path, querystring) {
+            if (querystring) {
+                window.location = "/" + path + "?" + querystring;
+            } else {
+                window.location = "/" + path;
+            }
+
         }
     });
 

@@ -16,10 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     fs = require("fs"),
     path = require("path"),
@@ -44,7 +46,7 @@ var tc = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 
 suite.addBatch({
     "When we get the User class": {
-        topic: function() { 
+        topic: function() {
 
             var cb = this.callback;
             // Need this to make IDs
@@ -61,7 +63,7 @@ suite.addBatch({
                 var User;
 
                 DatabankObject.bank = db;
-                
+
                 User = require("../lib/model/user").User || null;
 
                 cb(null, User);
@@ -91,7 +93,7 @@ suite.addBatch({
                     var cb = this.callback,
                         Image = require("../lib/model/image").Image,
                         obj;
-                    
+
                     Step(
                         function() {
                             Image.create({displayName: "Courage Wolf",
@@ -126,7 +128,7 @@ suite.addBatch({
             "and it favorites an unknown object": {
                 topic: function(user) {
                     var cb = this.callback;
-                    
+
                     user.addToFavorites({id: "urn:uuid:5be685ef-f50b-458b-bfd3-3ca004eb0e89", objectType: "image"}, this.callback);
                 },
                 "it works": function(err) {
@@ -145,7 +147,7 @@ suite.addBatch({
                 topic: function(user) {
                     var cb = this.callback,
                         Audio = require("../lib/model/audio").Audio;
-                    
+
                     Step(
                         function() {
                             Audio.create({displayName: "Spock",

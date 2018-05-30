@@ -16,11 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var databank = require("databank"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     validator = require("validator"),
-    check = validator.check,
     Mailer = require("../lib/mailer"),
     URLMaker = require("../lib/urlmaker").URLMaker,
     filters = require("../lib/filters"),
@@ -43,6 +44,10 @@ var databank = require("databank"),
     saveAvatar = su.saveAvatar,
     streams = require("../lib/streams"),
     api = require("./api"),
+    as2headers = require("../lib/as2headers"),
+    as2 = require("../lib/as2"),
+    maybeAS2 = as2headers.maybeAS2,
+    wantAS2 = as2headers.wantAS2,
     HTTPError = he.HTTPError,
     reqUser = mw.reqUser,
     reqGenerator = mw.reqGenerator,
@@ -65,47 +70,46 @@ var databank = require("databank"),
     principalActorOrRecipient = omw.principalActorOrRecipient,
     principalAuthorOrRecipient = omw.principalAuthorOrRecipient;
 
-var addRoutes = function(app) {
+var addRoutes = function(app, session) {
 
-    app.get("/", app.session, principal, addMessages, showMain);
+    app.get("/", session, principal, addMessages, showMain);
 
-    app.post("/main/javascript-disabled", app.session, principal, showJavascriptDisabled);
-    
-    app.get("/main/register", app.session, principal, showRegister);
-    app.post("/main/register", app.session, principal, clientAuth, reqGenerator, createUser);
+    app.post("/main/javascript-disabled", session, principal, showJavascriptDisabled);
 
-    app.get("/main/login", app.session, principal, addMessages, showLogin);
-    app.post("/main/login", app.session, clientAuth, handleLogin);
+    app.get("/main/register", session, principal, showRegister);
+    app.post("/main/register", session, principal, clientAuth, reqGenerator, createUser);
 
-    app.post("/main/logout", app.session, someReadAuth, handleLogout);
+    app.get("/main/login", session, principal, addMessages, showLogin);
+    app.post("/main/login", session, clientAuth, handleLogin);
 
-    app.post("/main/renew", app.session, userAuth, renewSession);
+    app.post("/main/logout", session, someReadAuth, handleLogout);
 
-    app.get("/main/remote", app.session, principal, showRemote);
-    app.post("/main/remote", app.session, handleRemote);
+    app.post("/main/renew", session, userAuth, renewSession);
+
+    app.get("/main/remote", session, principal, showRemote);
+    app.post("/main/remote", session, handleRemote);
 
     if (app.config.haveEmail) {
-        app.get("/main/recover", app.session, showRecover);
-        app.get("/main/recover-sent", app.session, showRecoverSent);
-        app.post("/main/recover", app.session, handleRecover);
-        app.get("/main/recover/:code", app.session, recoverCode);
-        app.post("/main/redeem-code", app.session, clientAuth, redeemCode);
+        app.get("/main/recover", session, showRecover);
+        app.get("/main/recover-sent", session, showRecoverSent);
+        app.post("/main/recover", session, handleRecover);
+        app.get("/main/recover/:code", session, recoverCode);
+        app.post("/main/redeem-code", session, clientAuth, redeemCode);
     }
 
-    app.get("/main/authorized/:hostname", app.session, reqHost, reqToken, authorized);
-    
+    app.get("/main/authorized/:hostname", session, reqHost, reqToken, authorized);
+
     if (app.config.uploaddir) {
-        app.post("/main/upload", app.session, principal, principalUserOnly, uploadFile);
-        app.post("/main/upload-avatar", app.session, principal, principalUserOnly, uploadAvatar);
+        app.post("/main/upload", session, principal, principalUserOnly, uploadFile);
+        app.post("/main/upload-avatar", session, principal, principalUserOnly, uploadAvatar);
     }
 
-    app.get("/:nickname", app.session, principal, addMessages, reqUser, showStream);
-    app.get("/:nickname/favorites", app.session, principal, addMessages, reqUser, showFavorites);
-    app.get("/:nickname/followers", app.session, principal, addMessages, reqUser, showFollowers);
-    app.get("/:nickname/following", app.session, principal, addMessages, reqUser, showFollowing);
+    app.get("/:nickname/favorites", session, principal, addMessages, reqUser, showFavorites);
+    app.get("/:nickname/followers", session, principal, addMessages, reqUser, showFollowers);
+    app.get("/:nickname/following", session, principal, addMessages, reqUser, showFollowing);
 
-    app.get("/:nickname/lists", app.session, principal, addMessages, reqUser, showLists);
-    app.get("/:nickname/list/:uuid", app.session, principal, addMessages, reqUser, showList);
+    app.get("/:nickname/lists", session, principal, addMessages, reqUser, showLists);
+    app.get("/:nickname/list/:uuid", session, principal, addMessages, reqUser, showList);
 
     // For things that you can only see if you're logged in,
     // we redirect to the login page, then let you go there
@@ -114,18 +118,18 @@ var addRoutes = function(app) {
     app.get("/main/account", loginRedirect("/main/account"));
     app.get("/main/messages", loginRedirect("/main/messages"));
 
-    app.post("/main/proxy", app.session, principal, principalNotUser, proxyActivity);
+    app.post("/main/proxy", session, principal, principalNotUser, proxyActivity);
 
     // These are catchalls and should go at the end to prevent conflicts
 
-    app.get("/:nickname/activity/:uuid", app.session, principal, addMessages, requestActivity, reqUser, userIsActor, principalActorOrRecipient, showActivity);
+    app.get("/:nickname/activity/:uuid", session, principal, addMessages, requestActivity, reqUser, userIsActor, principalActorOrRecipient, showActivity);
 
-    app.get("/:nickname/:type/:uuid", app.session, principal, addMessages, requestObject, reqUser, userIsAuthor, principalAuthorOrRecipient, showObject);
+    app.get("/:nickname/:type/:uuid", session, principal, addMessages, requestObject, reqUser, userIsAuthor, principalAuthorOrRecipient, showObject);
 };
 
 var loginRedirect = function(rel) {
     return function(req, res, next) {
-        res.redirect('/main/login?continue='+rel);
+        res.redirect("/main/login?continue="+rel);
     };
 };
 
@@ -215,8 +219,8 @@ var handleRemote = function(req, res, next) {
         host;
 
     try {
-        check(webfinger).isEmail();
-    } catch(e) {
+        validator.isEmail(webfinger);
+    } catch (e) {
         next(new HTTPError(e.message, 400));
         return;
     }
@@ -300,7 +304,7 @@ var userIsActor = function(req, res, next) {
 
     actor = activity.actor;
 
-    if (person && actor && person.id == actor.id) {
+    if (person && actor && person.id === actor.id) {
         next();
     } else {
         next(new HTTPError("person " + person.id + " is not the actor of " + activity.id, 404));
@@ -430,8 +434,8 @@ var handleLogin = function(req, res, next) {
 
     var user = null;
 
-    Step( 
-        function () { 
+    Step(
+        function() {
             User.checkCredentials(req.body.nickname, req.body.password, this);
         },
         function(err, result) {
@@ -513,7 +517,7 @@ var showList = function(req, res, next) {
                     if (results.length === 0) throw new HTTPError("Not found", 404);
                     if (results.length > 1) throw new HTTPError("Too many lists", 500);
                     list = results[0];
-                    if (list.author.id != user.profile.id) {
+                    if (list.author.id !== user.profile.id) {
                         throw new HTTPError("User " + user.nickname + " is not author of " + list.id, 400);
                     }
                     // Make it a real object
@@ -627,7 +631,7 @@ var userIsAuthor = function(req, res, next) {
         obj = req[type],
         author = obj.author;
 
-    if (person && author && person.id == author.id) {
+    if (person && author && person.id === author.id) {
         next();
     } else {
         next(new HTTPError("No " + type + " by " + user.nickname + " with uuid " + obj._uuid, 404));
@@ -710,7 +714,7 @@ var reqHost = function(req, res, next) {
             if (err) {
                 next(err);
             } else {
-                req.host = host;
+                req.pumphost = host;
                 next();
             }
         }
@@ -719,7 +723,7 @@ var reqHost = function(req, res, next) {
 
 var reqToken = function(req, res, next) {
     var token = req.query.oauth_token,
-        host = req.host;
+        host = req.pumphost;
 
     Step(
         function() {
@@ -739,7 +743,7 @@ var reqToken = function(req, res, next) {
 var authorized = function(req, res, next) {
 
     var rt = req.rt,
-        host = req.host,
+        host = req.pumphost,
         verifier = req.query.oauth_verifier,
         principal,
         pair;
@@ -883,8 +887,8 @@ var addMessages = function(req, res, next) {
             if (err) {
                 next(err);
             } else {
-                res.local("messages", messages);
-                res.local("notifications", notifications);
+                res.locals.messages = messages;
+                res.locals.notifications = notifications;
                 next();
             }
         }
@@ -906,14 +910,14 @@ var handleRecover = function(req, res, next) {
         nickname = req.body.nickname,
         force = req.body.force;
 
-    Step( 
-        function () { 
+    Step(
+        function() {
             req.log.debug({nickname: nickname}, "checking for user to recover");
             User.get(nickname, this);
         },
         function(err, result) {
             if (err) {
-                if (err.name == "NoSuchThingError") {
+                if (err.name === "NoSuchThingError") {
                     req.log.debug({nickname: nickname}, "No such user, can't recover");
                     res.status(400);
                     res.json({sent: false, noSuchUser: true, error: "There is no user with that nickname."});
@@ -946,7 +950,7 @@ var handleRecover = function(req, res, next) {
                 req.log.debug({nickname: nickname}, "No existing recovery records; continuing.");
                 this(null);
                 return;
-            } 
+            }
             stillValid = _.filter(recoveries, function(reco) { return Date.now() - Date.parse(reco.timestamp) < Recovery.TIMEOUT; });
             if (stillValid.length > 0) {
                 req.log.debug({nickname: nickname, count: stillValid.length}, "Have an existing, valid recovery record.");
@@ -972,15 +976,13 @@ var handleRecover = function(req, res, next) {
                        {principal: user.profile,
                         principalUser: user,
                         recovery: recovery,
-                        recoveryURL: recoveryURL,
-                        layout: false},
+                        recoveryURL: recoveryURL},
                        this.parallel());
             res.render("recovery-email-text",
                        {principal: user.profile,
                         principalUser: user,
                         recovery: recovery,
-                        recoveryURL: recoveryURL,
-                        layout: false},
+                        recoveryURL: recoveryURL},
                        this.parallel());
         },
         function(err, html, text) {
@@ -1006,7 +1008,7 @@ var handleRecover = function(req, res, next) {
 };
 
 var recoverCode = function(req, res, next) {
-    
+
     var code = req.params.code;
 
     res.render("recover-code", {page: {title: "One moment please"},
@@ -1078,3 +1080,4 @@ var redeemCode = function(req, res, next) {
 };
 
 exports.addRoutes = addRoutes;
+exports.profileStack = [principal, addMessages, reqUser, showStream];

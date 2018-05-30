@@ -2,7 +2,7 @@
 
 // -*- mode: javascript -*-
 
-// stopfollowing.js
+// pump-stop-following
 //
 // stop following another user
 //
@@ -20,7 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     url = require("url"),
     common = require("../lib/pumpclient"),
@@ -50,7 +52,7 @@ if (otherId.indexOf("@") === -1) {
     otherId = otherId + "@" + server;
 }
 
-if (otherId.substr(0, 5) != "acct:") {
+if (otherId.substr(0, 5) !== "acct:") {
     otherId = "acct:" + otherId;
 }
 
@@ -60,16 +62,16 @@ Step(
     },
     function(err, cred) {
         if (err) throw err;
-	var activity = {
+        var activity = {
             "verb": "stop-following",
-	    "object": {
-		"objectType": "person",
-		id: otherId
-	    }
-	};
+            "object": {
+                "objectType": "person",
+                id: otherId
+            }
+        };
         var endpoint = url.format({
-            protocol: ((port == 443) ? "https" : "http"),
-            host: ((port == 80) ? server : server + ":" + port),
+            protocol: ((port === 443) ? "https" : "http"),
+            host: ((port === 80) ? server : server + ":" + port),
             pathname: "/api/user/"+username+"/feed"
         });
         postJSON(endpoint, cred, activity, this);

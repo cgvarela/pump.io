@@ -16,15 +16,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     http = require("http"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    setupApp = apputil.setupApp,
     newClient = oauthutil.newClient,
     newPair = oauthutil.newPair,
     register = oauthutil.register;
@@ -98,7 +101,7 @@ suite.addBatch({
                 assert.equal(user.profile.id, "http://localhost:4815/api/user/jamesbond/profile");
             },
 
-            "and we get the options on the user profile api endpoint": 
+            "and we get the options on the user profile api endpoint":
             httputil.endpoint("/api/user/jamesbond/profile", ["GET", "PUT"]),
 
             "and we GET the user profile data": {
@@ -156,6 +159,34 @@ suite.addBatch({
                         assert.equal(profile.displayName, "James Bond");
                         assert.equal(profile.summary, "007");
                     }
+                }
+            },
+            "and we GET the user profile data as ActivityStreams 2.0": {
+                topic: function(pair, cl) {
+                    var cb = this.callback,
+                        user = pair.user;
+
+                    Step(
+                        function() {
+                            httputil.getJSON("http://localhost:4815/api/user/jamesbond/profile",
+                                             makeCred(cl, pair),
+                                             {"Accept": "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""},
+                                             this);
+                        },
+                        function(err, results) {
+                            if (err) {
+                                cb(err, null);
+                            } else {
+                                cb(null, results);
+                            }
+                        }
+                    );
+                },
+                "it works": function(err, profile) {
+                    assert.ifError(err);
+                    assert.isObject(profile);
+                    assert.include(profile, "type");
+                    assert.equal(profile.type, "Person");
                 }
             }
         }

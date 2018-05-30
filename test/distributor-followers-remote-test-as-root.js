@@ -16,21 +16,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
     http = require("http"),
     querystring = require("querystring"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     urlparse = require("url").parse,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     newCredentials = oauthutil.newCredentials,
     newClient = oauthutil.newClient,
     pj = httputil.postJSON,
     gj = httputil.getJSON,
     dialbackApp = require("./lib/dialback").dialbackApp,
-    setupApp = oauthutil.setupApp;
+    setupApp = apputil.setupApp;
 
 var suite = vows.describe("distributor remote test");
 
@@ -95,7 +98,7 @@ suite.addBatch({
                             }
                         },
                         callback = this.callback;
-                    
+
                     pj(url, cred1, act, function(err, body, resp) {
                         if (err) {
                             callback(err, null);
@@ -128,7 +131,7 @@ suite.addBatch({
                                         displayName: "My Photo"
                                     }
                                 };
-                            
+
                             pj(url, cred2, post, function(err, act, resp) {
                                 if (err) {
                                     callback(err, null);
@@ -173,7 +176,7 @@ suite.addBatch({
                                     assert.include(feed, "items");
                                     assert.isArray(feed.items);
                                     assert.greater(feed.items.length, 0);
-				    assert.isObject(_.find(feed.items, function(item) { return item.id == act.id; }));
+                                    assert.isObject(_.find(feed.items, function(item) { return item.id === act.id; }));
                                 }
                             }
                         }

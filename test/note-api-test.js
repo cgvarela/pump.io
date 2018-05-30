@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
@@ -51,19 +54,8 @@ var pairOf = function(user) {
 
 // A batch for testing the read access to the API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get a new client": {
             topic: function() {
                 var cb = this.callback;
@@ -143,7 +135,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 pair = pairOf(user),
                                 cred = makeCred(cl, pair);
-                            // ID == JSON representation URL
+                            // ID === JSON representation URL
                             httputil.getJSON(act.object.id, cred, function(err, note) {
                                 cb(err, note, act);
                             });
@@ -153,7 +145,6 @@ suite.addBatch({
                             assert.isObject(note);
                         },
                         "results look right": function(err, note, act) {
-                            assert.ifError(err);
                             assert.isObject(note);
                             assert.include(note, "id");
                             assert.isString(note.id);
@@ -171,7 +162,6 @@ suite.addBatch({
                             assert.isString(note.author.objectType);
                         },
                         "results don't leak private members": function(err, note, act) {
-                            assert.ifError(err);
                             assert.isObject(note);
                             assert.isFalse(_.has(note, "_uuid"));
                         },
@@ -184,6 +174,44 @@ suite.addBatch({
                             assert.equal(note.author.id, act.actor.id);
                             assert.equal(note.author.displayName, act.actor.displayName);
                             assert.equal(note.author.objectType, act.actor.objectType);
+                        }
+                    },
+                    "and we fetch the posted note as ActivityStreams 2.0": {
+                        topic: function(act, user, cl) {
+                            var cb = this.callback,
+                                pair = pairOf(user),
+                                cred = makeCred(cl, pair);
+                            // ID === JSON representation URL
+                            httputil.getJSON(act.object.id, cred, {"Accept": "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""}, function(err, note) {
+                                cb(err, note, act);
+                            });
+                        },
+                        "it works": function(err, note, act) {
+                            assert.ifError(err);
+                            assert.isObject(note);
+                        },
+                        "the result was converted to AS2": function(err, note, act) {
+                            assert.isObject(note);
+                            assert.include(note, "id");
+                            assert.isString(note.id);
+                        },
+                        "the author was converted to AS2": function(err, note, act) {
+                            assert.include(note, "attributedTo");
+                            assert.isObject(note.attributedTo);
+                            assert.include(note.attributedTo, "id");
+                            assert.equal(note.attributedTo.id, "http://localhost:4815/frodo");
+                            assert.equal(note.attributedTo.type, "Person");
+                        },
+                        "results don't leak private members": function(err, note, act) {
+                            assert.isObject(note);
+                            assert.isFalse(_.has(note, "_uuid"));
+                        },
+                        "results are what we posted": function(err, note, act) {
+                            assert.equal(note.content, "I'm so scared!");
+                            assert.equal(note.type, "Note");
+                            assert.equal(note.id, act.object.id);
+                            assert.equal(Date.parse(note.published), Date.parse(act.object.published));
+                            assert.equal(Date.parse(note.updated), Date.parse(act.object.updated));
                         }
                     }
                 }
@@ -235,7 +263,7 @@ suite.addBatch({
                         var callback = this.callback,
                             url = del.object.id;
                         httputil.getJSON(url, cred, function(err, obj, res) {
-                            if (err && err.statusCode == 410) {
+                            if (err && err.statusCode === 410) {
                                 callback(null);
                             } else if (err) {
                                 callback(err);
@@ -369,7 +397,6 @@ suite.addBatch({
                         assert.ifError(err);
                     },
                     "it has the updated content": function(err, obj) {
-                        assert.ifError(err);
                         assert.isObject(obj);
                         assert.include(obj, "content");
                         assert.isString(obj.content);
@@ -388,7 +415,6 @@ suite.addBatch({
                         assert.ifError(err);
                     },
                     "it has the update activity": function(err, feed) {
-                        assert.ifError(err);
                         assert.isObject(feed);
                         assert.include(feed, "items");
                         assert.isArray(feed.items);
@@ -448,7 +474,7 @@ suite.addBatch({
                     topic: function(url, cred) {
                         var callback = this.callback;
                         httputil.getJSON(url, cred, function(err, obj, res) {
-                            if (err && err.statusCode == 410) {
+                            if (err && err.statusCode === 410) {
                                 callback(null);
                             } else if (err) {
                                 callback(err);
@@ -473,7 +499,6 @@ suite.addBatch({
                         assert.ifError(err);
                     },
                     "it has the delete activity": function(err, feed) {
-                        assert.ifError(err);
                         assert.isObject(feed);
                         assert.include(feed, "items");
                         assert.isArray(feed.items);
@@ -488,7 +513,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

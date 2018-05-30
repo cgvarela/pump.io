@@ -3,7 +3,7 @@
 // Copyright 2012 E14N https://e14n.com/
 //
 // "I never met a host I didn't like"
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,18 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     xml2js = require("xml2js"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
     xrdutil = require("./lib/xrd"),
-    setupApp = oauthutil.setupApp;
+    withAppSetup = apputil.withAppSetup;
 
 var suite = vows.describe("host meta test");
 
@@ -61,24 +64,13 @@ var hostmeta = {
 
 // A batch to test hostmeta functions
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
-        "and we check the host-meta endpoint": 
+suite.addBatch(
+    withAppSetup({
+        "and we check the host-meta endpoint":
         httputil.endpoint("/.well-known/host-meta", ["GET"]),
-        "and we check the host-meta.json endpoint": 
+        "and we check the host-meta.json endpoint":
         httputil.endpoint("/.well-known/host-meta.json", ["GET"]),
-        "and we GET the host-meta file": 
+        "and we GET the host-meta file":
         xrdutil.xrdContext("http://localhost:4815/.well-known/host-meta",
                    hostmeta),
         "and we GET the host-meta.json file":
@@ -126,7 +118,7 @@ suite.addBatch({
             "it has a JSON content type": xrdutil.typeCheck("application/json; charset=utf-8"),
             "it has lrdd template links": xrdutil.jrdLinkCheck(hostmeta)
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

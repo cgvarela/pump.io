@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -53,7 +55,7 @@ mb["When we require the nonce module"]
   ["and we create a nonce instance"]
   ["auto-generated fields are there"] = function(err, created) {
       assert.isString(created.token_nonce);
-};
+  };
 
 mb["When we require the nonce module"]
 ["and we get its Nonce class export"]

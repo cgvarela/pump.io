@@ -16,11 +16,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     simplesmtp = require("simplesmtp"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     httputil = require("./lib/http"),
     emailutil = require("./lib/email"),
     Browser = require("zombie"),
@@ -29,8 +32,8 @@ var assert = require("assert"),
     newClient = oauthutil.newClient,
     register = oauthutil.register,
     registerEmail = oauthutil.registerEmail,
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig,
+    withAppSetup = apputil.withAppSetup,
+    setupAppConfig = apputil.setupAppConfig,
     oneEmail = emailutil.oneEmail,
     confirmEmail = emailutil.confirmEmail;
 
@@ -76,7 +79,7 @@ suite.addBatch({
                 smtp = simplesmtp.createServer({disableDNSValidation: true});
             Step(
                 function() {
-                    smtp.listen(1623, this); 
+                    smtp.listen(1623, this);
                 },
                 function(err) {
                     if (err) throw err;

@@ -16,7 +16,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -67,45 +69,45 @@ suite.addBatch({
                     var group = this.group();
                     if (err) throw err;
                     stream = results;
-		    _.times(100, function(i) {
-			stream.deliverObject({id: "http://social.example/image/"+i, objectType: "image"}, group());
-		    });
+                    _.times(100, function(i) {
+                        stream.deliverObject({id: "http://social.example/image/"+i, objectType: "image"}, group());
+                    });
                 },
-		function(err) {
-		    if (err) {
-			cb(err, null);
-		    } else {
-			cb(null, stream);
-		    }
-		}
-	    );
-	},
-	"it works": function(err, stream) {
-	    assert.ifError(err);
-	    assert.isObject(stream);
-	},
-	"it has a hasObject() method": function(err, stream) {
-	    assert.ifError(err);
-	    assert.isFunction(stream.hasObject);
-	},
-	"and we check if it has an object we added": {
-	    topic: function(stream) {
-		stream.hasObject({id: "http://social.example/image/69", objectType: "image"}, this.callback);
-	    },
-	    "it does": function(err, hasObject) {
-		assert.ifError(err);
-		assert.isTrue(hasObject);
-	    }
-	},
-	"and we check if it has an object we didn't add": {
-	    topic: function(stream) {
-		stream.hasObject({id: "http://nonexistent.example/audio/23", objectType: "image"}, this.callback);
-	    },
-	    "it does not": function(err, hasObject) {
-		assert.ifError(err);
-		assert.isFalse(hasObject);
-	    }
-	}
+                function(err) {
+                    if (err) {
+                        cb(err, null);
+                    } else {
+                        cb(null, stream);
+                    }
+                }
+            );
+        },
+        "it works": function(err, stream) {
+            assert.ifError(err);
+            assert.isObject(stream);
+        },
+        "it has a hasObject() method": function(err, stream) {
+            assert.ifError(err);
+            assert.isFunction(stream.hasObject);
+        },
+        "and we check if it has an object we added": {
+            topic: function(stream) {
+                stream.hasObject({id: "http://social.example/image/69", objectType: "image"}, this.callback);
+            },
+            "it does": function(err, hasObject) {
+                assert.ifError(err);
+                assert.isTrue(hasObject);
+            }
+        },
+        "and we check if it has an object we didn't add": {
+            topic: function(stream) {
+                stream.hasObject({id: "http://nonexistent.example/audio/23", objectType: "image"}, this.callback);
+            },
+            "it does not": function(err, hasObject) {
+                assert.ifError(err);
+                assert.isFalse(hasObject);
+            }
+        }
     }
 });
 

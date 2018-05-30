@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
@@ -34,7 +37,7 @@ var assert = require("assert"),
 
 var ignore = function(err) {};
 
-var suite = vows.describe("Activity generator attribute");
+var suite = vows.describe("Activity generator attribute identity");
 
 var makeCred = function(cl, pair) {
     return {
@@ -54,19 +57,8 @@ var clientCred = function(cl) {
 
 // A batch for testing the read access to the API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a new client": {
             topic: function() {
                 var cb = this.callback,
@@ -119,26 +111,26 @@ suite.addBatch({
                                     content: "Hello, world!"
                                 }
                             },
-			    first, second;
+                            first, second;
 
-			Step(
-			    function() {
-				httputil.postJSON(url, cred, act, this);
-			    },
-			    function(err, doc, resp) {
-				if (err) throw err;
-				first = doc;
-				httputil.postJSON(url, cred, act, this);
-			    },
-			    function(err, doc, resp) {
-				if (err) {
-				    cb(err, null, null);
-				} else {
-				    second = doc;
-				    cb(null, first, second);
-				}
-			    }
-			);
+                        Step(
+                            function() {
+                                httputil.postJSON(url, cred, act, this);
+                            },
+                            function(err, doc, resp) {
+                                if (err) throw err;
+                                first = doc;
+                                httputil.postJSON(url, cred, act, this);
+                            },
+                            function(err, doc, resp) {
+                                if (err) {
+                                    cb(err, null, null);
+                                } else {
+                                    second = doc;
+                                    cb(null, first, second);
+                                }
+                            }
+                        );
                     },
                     "the generator IDs are the same": function(err, first, second) {
                         assert.ifError(err);
@@ -146,12 +138,12 @@ suite.addBatch({
                         assert.isObject(first.generator);
                         assert.isObject(second);
                         assert.isObject(second.generator);
-			assert.equal(first.generator.id, second.generator.id);
+                        assert.equal(first.generator.id, second.generator.id);
                     }
                 }
-	    }
+            }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

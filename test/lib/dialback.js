@@ -16,17 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var express = require("express");
+"use strict";
+
+var http = require("http"),
+    express = require("express");
 
 var dialbackApp = function(port, hostname, callback) {
 
-    var app = express.createServer();
+    var app = express(),
+        server = http.createServer(app);
 
-    app.configure(function(){
-        app.set("port", port);
-        app.use(express.bodyParser());
-        app.use(app.router);
-    });
+    app.set("port", port);
+    app.use(express.json());
+    app.use(express.urlencoded());
+    app.use(express.multipart());
+    app.use(app.router);
 
     app.get("/.well-known/host-meta.json", function(req, res) {
         res.json({
@@ -82,7 +86,7 @@ var dialbackApp = function(port, hostname, callback) {
             return;
         }
 
-        if (host && host != hostname) {
+        if (host && host !== hostname) {
             res.status(400).send("Incorrect host");
             return;
         }
@@ -91,7 +95,7 @@ var dialbackApp = function(port, hostname, callback) {
             parts = webfinger.split("@", 2);
             user = parts[0];
             host = parts[1];
-            if (user == "invalid" || host != hostname) {
+            if (user === "invalid" || host !== hostname) {
                 res.status(400).send("Invalid webfinger");
                 return;
             }
@@ -114,7 +118,7 @@ var dialbackApp = function(port, hostname, callback) {
             return;
         }
 
-        if (token == "INVALID") {
+        if (token === "INVALID") {
             res.status(400).send("Invalid token");
             return;
         }
@@ -124,11 +128,11 @@ var dialbackApp = function(port, hostname, callback) {
         res.status(200).send("OK");
     });
 
-    app.on("error", function(err) {
+    server.on("error", function(err) {
         callback(err, null);
     });
 
-    app.listen(port, hostname, function() {
+    server.listen(port, hostname, function() {
         callback(null, app);
     });
 };

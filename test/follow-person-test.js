@@ -16,18 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
     newClient = oauthutil.newClient,
@@ -50,19 +53,8 @@ var suite = vows.describe("follow person activity test");
 
 // A batch to test following/unfollowing users
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client": {
             topic: function() {
                 newClient(this.callback);
@@ -131,7 +123,7 @@ suite.addBatch({
                         var callback = this.callback,
                             url = "http://localhost:4815/api/user/moe/profile",
                             cred = makeCred(cl, users.larry.pair);
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             callback(err, doc);
                         });
@@ -154,7 +146,7 @@ suite.addBatch({
                         var callback = this.callback,
                             url = "http://localhost:4815/api/user/moe/profile",
                             cred = makeCred(cl, users.curly.pair);
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             callback(err, doc);
                         });
@@ -410,8 +402,8 @@ suite.addBatch({
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/abbott/following",
                             cred = makeCred(cl, users.abbott.pair);
-                        
-                            httputil.getJSON(url, cred, function(err, doc, resp) {
+
+                        httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
                     },
@@ -433,8 +425,8 @@ suite.addBatch({
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/abbott/feed",
                             cred = makeCred(cl, users.abbott.pair);
-                        
-                            httputil.getJSON(url, cred, function(err, doc, resp) {
+
+                        httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
                     },
@@ -487,7 +479,7 @@ suite.addBatch({
                             httputil.postJSON(url, cred, users.cop.profile, this);
                         },
                         function(err, posted, result) {
-                            if (err && err.statusCode == 401) {
+                            if (err && err.statusCode === 401) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -502,7 +494,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

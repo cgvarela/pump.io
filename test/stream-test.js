@@ -16,7 +16,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -106,7 +108,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 mod = require("../lib/model/stream");
 
                 if (!mod) {
@@ -246,7 +248,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 var Stream = require("../lib/model/stream").Stream;
                 cb(null, Stream);
             });
@@ -324,7 +326,7 @@ suite.addBatch({
         "and we try to remove() from an empty stream": {
             topic: function(Stream) {
                 var cb = this.callback;
-                
+
                 Stream.create({name: "test-remove-2"}, function(err, stream) {
                     if (err) {
                         cb(err);
@@ -351,7 +353,7 @@ suite.addBatch({
                 Step(
                     function() {
                         Stream.create({name: "test-remove-3"}, this);
-                    }, 
+                    },
                     function(err, results) {
                         var i, group = this.group();
                         if (err) throw err;
@@ -414,7 +416,7 @@ suite.addBatch({
                     if (err) throw err;
 
                     DatabankObject.bank = db;
-                    
+
                     var Stream = require("../lib/model/stream").Stream;
 
                     Stream.create({name: "scale-test"}, this);
@@ -479,7 +481,7 @@ suite.addBatch({
                 Step(
                     function() {
                         var i, group = this.group();
-                        for (i = 0; i < 500; i++) { 
+                        for (i = 0; i < 500; i++) {
                             stream.getIDs(i * 20, (i+1)*20, group());
                         }
                     },
@@ -518,7 +520,7 @@ suite.addBatch({
                 Step(
                     function() {
                         var i, group = this.group();
-                        for (i = 0; i < 20; i++) { 
+                        for (i = 0; i < 20; i++) {
                             stream.getIDs(i * 500, (i+1)*500, group());
                         }
                     },
@@ -557,7 +559,7 @@ suite.addBatch({
                 Step(
                     function() {
                         var i, group = this.group();
-                        for (i = 0; i < 10000; i++) { 
+                        for (i = 0; i < 10000; i++) {
                             stream.getIDs(i, i+1, group());
                         }
                     },
@@ -612,7 +614,7 @@ suite.addBatch({
                 topic: function(all, stream) {
                     var cb = this.callback,
                         target = all[4216];
-                    
+
                     stream.getIDsGreaterThan(target, 20, function(err, results) {
                         cb(err, results, all);
                     });
@@ -633,7 +635,7 @@ suite.addBatch({
                 topic: function(all, stream) {
                     var cb = this.callback,
                         target = all[8423];
-                    
+
                     stream.getIDsLessThan(target, 20, function(err, results) {
                         cb(err, results, all);
                     });
@@ -681,7 +683,7 @@ suite.addBatch({
                 topic: function(all, stream) {
                     var cb = this.callback,
                         target = all[9979];
-                    
+
                     stream.getIDsGreaterThan(target, 40, function(err, results) {
                         cb(err, results, all);
                     });
@@ -702,7 +704,7 @@ suite.addBatch({
                 topic: function(all, stream) {
                     var cb = this.callback,
                         target = all[40];
-                    
+
                     stream.getIDsLessThan(target, 60, function(err, results) {
                         cb(err, results, all);
                     });

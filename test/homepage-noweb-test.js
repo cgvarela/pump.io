@@ -16,16 +16,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     Browser = require("zombie"),
-    setupAppConfig = oauthutil.setupAppConfig;
+    setupAppConfig = apputil.setupAppConfig;
 
 var suite = vows.describe("homepage with noweb test");
 
 // A batch to test that the API docs are served at root
-
 suite.addBatch({
     "When we set up the app": {
         topic: function() {
@@ -41,24 +43,31 @@ suite.addBatch({
         },
         "and we visit the root URL": {
             topic: function() {
-                var browser;
-                browser = new Browser();
+                var cb = this.callback,
+                    browser = new Browser();
 
-                browser.visit("http://localhost:4815/", this.callback);
+                browser.visit("http://localhost:4815/", function(err) {
+                    cb(err, browser);
+                });
+            },
+            teardown: function(br) {
+                if (br && br.window.close) {
+                    br.window.close();
+                }
             },
             "it works": function(err, br) {
                 assert.ifError(err);
-                assert.isTrue(br.success);
+                br.assert.success();
             },
             "it has the right title": function(err, br) {
                 assert.ifError(err);
-                assert.isTrue(br.success);
-                assert.equal(br.text("title"), "API - pump.io");
+                br.assert.success();
+                br.assert.text("title", "API - pump.io");
             },
             "it has the right H1": function(err, br) {
                 assert.ifError(err);
-                assert.isTrue(br.success);
-                assert.equal(br.text("H1"), "pump.io API");
+                br.assert.success();
+                br.assert.text("H1", "pump.io API");
             }
         }
     }

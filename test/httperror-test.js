@@ -16,12 +16,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows");
 
 vows.describe("httperror module interface").addBatch({
     "When we require the http error module": {
-        topic: function() { 
+        topic: function() {
             return require("../lib/httperror");
         },
         "we get an object": function(httperror) {
@@ -50,7 +52,7 @@ vows.describe("httperror module interface").addBatch({
                     assert.equal(err.code, 404);
                 }
             }
-            
+
         }
     }
 })["export"](module);

@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows");
 
@@ -26,7 +28,7 @@ var methodContext = function(methods) {
                 return obj;
             }
         };
-    
+
     for (i in methods) {
         m = methods[i];
         if ("aeiouAEIOU".indexOf(m.charAt(0)) !== -1) {
@@ -34,6 +36,7 @@ var methodContext = function(methods) {
         } else {
             k = "it has a "+m+" method";
         }
+        /* jshint loopfunc: true */
         context[k] = function(obj) {
             assert.isFunction(obj[methods[i]]);
         };

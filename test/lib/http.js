@@ -16,33 +16,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var http = require("http"),
     https = require("https"),
     assert = require("assert"),
     querystring = require("querystring"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     fs = require("fs"),
     express = require("express"),
-    util = require("util"),
     version = require("../../lib/version").version,
     OAuth = require("oauth-evanp").OAuth,
     urlparse = require("url").parse;
 
 var OAuthJSONError = function(obj) {
     Error.captureStackTrace(this, OAuthJSONError);
-    this.name = "OAuthJSONError";  
+    this.name = "OAuthJSONError";
     _.extend(this, obj);
 };
 
-OAuthJSONError.prototype = new Error();  
+OAuthJSONError.prototype = new Error();
 OAuthJSONError.prototype.constructor = OAuthJSONError;
 
 OAuthJSONError.prototype.toString = function() {
     return "OAuthJSONError (" + this.statusCode + "): " + this.data;
 };
 
-var newOAuth = function(serverURL, cred) {
+var newOAuth = function(serverURL, cred, headers) {
     var oa, parts;
 
     parts = urlparse(serverURL);
@@ -55,7 +56,7 @@ var newOAuth = function(serverURL, cred) {
                    null,
                    "HMAC-SHA1",
                    null, // nonce size; use default
-                   {"User-Agent": "pump.io/"+version});
+                   _.assign({"User-Agent": "pump.io/"+version}, headers || {}));
 
     return oa;
 };
@@ -86,6 +87,7 @@ var endpoint = function(url, hostname, port, methods) {
             assert.include(allow, method);
         };
     };
+
     var i;
 
     for (i = 0; i < methods.length; i++) {
@@ -107,7 +109,7 @@ var options = function(host, port, path, callback) {
         }
     };
 
-    var mod = (port == 443) ? https : http;
+    var mod = (port === 443) ? https : http;
 
     var req = mod.request(reqOpts, function(res) {
         var body = "";
@@ -150,7 +152,7 @@ var post = function(host, port, path, params, callback) {
         }
     };
 
-    var mod = (port == 443) ? https : http;
+    var mod = (port === 443) ? https : http;
 
     var req = mod.request(reqOpts, function(res) {
         var body = "";
@@ -175,16 +177,58 @@ var post = function(host, port, path, params, callback) {
     req.end();
 };
 
-var head = function(url, callback) {
+var head = function(url, headers, callback) {
 
     var options = urlparse(url);
 
-    options.method = "HEAD";
-    options.headers = {
-            "User-Agent": "pump.io/"+version
-    };
+    if (_.isFunction(headers)) {
+        callback = headers;
+        headers = {};
+    }
 
-    var mod = (options.protocol == "https:") ? https : http;
+    options.method = "HEAD";
+    options.headers = _.extend({
+        "User-Agent": "pump.io/"+version
+    }, headers);
+
+    var mod = (options.protocol === "https:") ? https : http;
+
+    var req = mod.request(options, function(res) {
+        var body = "";
+        res.setEncoding("utf8");
+        res.on("data", function(chunk) {
+            body = body + chunk;
+        });
+        res.on("error", function(err) {
+            callback(err, null, null);
+        });
+        res.on("end", function() {
+            callback(null, res, body);
+        });
+    });
+
+    req.on("error", function(err) {
+        callback(err, null, null);
+    });
+
+    req.end();
+};
+
+var get = function(url, headers, callback) {
+
+    var options = urlparse(url);
+
+    if (_.isFunction(headers)) {
+        callback = headers;
+        headers = {};
+    }
+
+    options.method = "GET";
+    options.headers = _.extend({
+        "User-Agent": "pump.io/"+version
+    }, headers);
+
+    var mod = (options.protocol === "https:") ? https : http;
 
     var req = mod.request(options, function(res) {
         var body = "";
@@ -228,9 +272,7 @@ var postJSON = function(serverUrl, cred, payload, callback) {
     var oa, toSend;
 
     oa = newOAuth(serverUrl, cred);
-    
     toSend = JSON.stringify(payload);
-
     oa.post(serverUrl, cred.token, cred.token_secret, toSend, "application/json", jsonHandler(callback));
 };
 
@@ -263,18 +305,20 @@ var putJSON = function(serverUrl, cred, payload, callback) {
     var oa, toSend;
 
     oa = newOAuth(serverUrl, cred);
-    
     toSend = JSON.stringify(payload);
-
     oa.put(serverUrl, cred.token, cred.token_secret, toSend, "application/json", jsonHandler(callback));
 };
 
-var getJSON = function(serverUrl, cred, callback) {
+var getJSON = function(serverUrl, cred, headers, callback) {
+
+    if (!callback) {
+        callback = headers;
+        headers = {};
+    }
 
     var oa, toSend;
 
-    oa = newOAuth(serverUrl, cred);
-    
+    oa = newOAuth(serverUrl, cred, headers);
     oa.get(serverUrl, cred.token, cred.token_secret, jsonHandler(callback));
 };
 
@@ -283,7 +327,6 @@ var delJSON = function(serverUrl, cred, callback) {
     var oa, toSend;
 
     oa = newOAuth(serverUrl, cred);
-    
     oa["delete"](serverUrl, cred.token, cred.token_secret, jsonHandler(callback));
 };
 
@@ -334,7 +377,7 @@ var dialbackPost = function(endpoint, id, token, ts, requestBody, contentType, c
         auth = "Dialback webfinger=\"" + id + "\", token=\""+token+"\"";
     }
 
-    var mod = (reqOpts.protocol == "https:") ? https : http;
+    var mod = (reqOpts.protocol === "https:") ? https : http;
 
     reqOpts.headers["Authorization"] = auth;
     reqOpts.headers["Date"] = (new Date(ts)).toUTCString();
@@ -364,48 +407,55 @@ var dialbackPost = function(endpoint, id, token, ts, requestBody, contentType, c
 
 var proxy = function(options, callback) {
 
-    var server = express.createServer(),
-        front = _.defaults(options.front || {}, {hostname: "localhost",
-						 port: 2342,
-						 path: "/pumpio"}),
-        back = _.defaults(options.back || {}, {hostname: "localhost",
-					       port: 4815,
-					       path: ""});
+    var app = express(),
+        server = http.createServer(app),
+        front = _.defaults(options.front || {}, {
+            hostname: "localhost",
+            port: 2342,
+            path: "/pumpio"
+        }),
+        back = _.defaults(options.back || {}, {
+            hostname: "localhost",
+            port: 4815,
+            path: ""
+        });
 
-    server.all(front.path + "/*", function(req, res, next) {
-	var full = req.originalUrl,
-	    rel = full.substr(front.path.length + 1),
-	    options = {
-		hostname: back.hostname,
-		port: back.port,
-		method: req.route.method.toUpperCase(),
-		path: back.path + "/" + rel,
-		headers: _.extend(req.headers, {"Via": "pump.io-test-proxy/0.1.0"})
-	    };
+    app.all(front.path + "/*", function(req, res, next) {
+        var full = req.originalUrl,
+            rel = full.substr(front.path.length + 1),
+            options = {
+                hostname: back.hostname,
+                port: back.port,
+                method: req.method.toUpperCase(),
+                path: back.path + "/" + rel,
+                headers: _.extend(req.headers, {"Via": "pump.io-test-proxy/0.1.0"})
+            },
+            breq;
 
-	breq = http.request(options, function(bres) {
-	    res.status(bres.statusCode);
-	    _.each(bres.headers, function(value, name) {
-		res.header(name, value);
-	    });
-	    util.pump(bres, res);
-	});
-	breq.on("error", function(err) {
-	    next(err);
-	});
-	util.pump(req, breq);
+        breq = http.request(options, function(bres) {
+            res.status(bres.statusCode);
+            _.each(bres.headers, function(value, name) {
+                res.header(name, value);
+            });
+            bres.pipe(res);
+        });
+        breq.on("error", function(err) {
+            next(err);
+        });
+        req.pipe(breq);
     });
 
     // XXX: need to call callback on an error
 
     server.listen(front.port, front.hostname, function() {
-	callback(null, server);
+        callback(null, server);
     });
 };
 
 exports.options = options;
 exports.post = post;
 exports.head = head;
+exports.get = get;
 exports.postJSON = postJSON;
 exports.postFile = postFile;
 exports.getJSON = getJSON;

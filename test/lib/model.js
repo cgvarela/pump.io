@@ -16,8 +16,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     vows = require("vows"),
     databank = require("databank"),
     Step = require("step"),
@@ -170,7 +172,8 @@ var modelBatch = function(typeName, className, testSchema, testData) {
             assert.ifError(err);
             for (prop in testData.create) {
                 // Author may have auto-created properties
-                if (_.contains(["author", "inReplyTo"], prop)) {
+                if (_.includes(["author", "inReplyTo"], prop)) {
+                    /* jshint loopfunc: true */
                     _.each(testData.create[prop], function(value, key) {
                         assert.deepEqual(created[prop][key], value);
                     });

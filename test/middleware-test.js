@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -38,7 +40,7 @@ vows.describe("middleware module interface").addBatch({
 
     "When we load the module": {
 
-        topic: function() { 
+        topic: function() {
 
             var cb = this.callback;
             // Need this to make IDs
@@ -88,7 +90,7 @@ vows.describe("middleware module interface").addBatch({
                                                    params: {}
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.reqUser(req, res, function(err) {
                     if (err && err.code && err.code === 404) {
                         cb(null);
@@ -111,7 +113,7 @@ vows.describe("middleware module interface").addBatch({
                                                    params: {nickname: "notanickname"}
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.reqUser(req, res, function(err) {
                     if (err && err.code && err.code === 404) {
                         cb(null);
@@ -134,7 +136,7 @@ vows.describe("middleware module interface").addBatch({
                                                    params: {nickname: "Robby"}
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.reqUser(req, res, function(err) {
                     if (err && err.code && err.code === 404) {
                         cb(null);
@@ -157,7 +159,7 @@ vows.describe("middleware module interface").addBatch({
                                                    params: {nickname: "robby"}
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.reqUser(req, res, function(err) {
                     if (err) {
                         cb(err);
@@ -179,7 +181,7 @@ vows.describe("middleware module interface").addBatch({
                                                    remoteUser: maya
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.sameUser(req, res, function(err) {
                     if (err) {
                         cb(null);
@@ -201,7 +203,7 @@ vows.describe("middleware module interface").addBatch({
                                                    user: robby
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.sameUser(req, res, function(err) {
                     if (err) {
                         cb(null);
@@ -224,7 +226,7 @@ vows.describe("middleware module interface").addBatch({
                                                    remoteUser: maya
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.sameUser(req, res, function(err) {
                     if (err) {
                         cb(null);
@@ -247,7 +249,7 @@ vows.describe("middleware module interface").addBatch({
                                                    remoteUser: robby
                                                   }),
                     res = httpMocks.createResponse();
-                
+
                 mw.sameUser(req, res, function(err) {
                     if (err) {
                         cb(null);

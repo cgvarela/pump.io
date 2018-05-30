@@ -2,6 +2,9 @@
 //
 // Entrypoint for the pump.io client UI
 //
+// @licstart  The following is the entire license notice for the
+//  JavaScript code in this page.
+//
 // Copyright 2011-2012, E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +18,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// @licend  The above is the entire license notice
+// for the JavaScript code in this page.
 
 // Make sure this exists
 
@@ -24,9 +30,23 @@ if (!window.Pump) {
 
 (function(_, $, Backbone, Pump) {
 
-    // This is overwritten by inline script in layout.utml
+    "use strict";
+
+    // This is overwritten by inline script in layout.jade
 
     Pump.config = {};
+
+    // Compatibility override - Backbone 1.1 got rid of the 'options' binding
+    // automatically to views in the constructor - we need to keep that.
+    // https://stackoverflow.com/a/19431552/1198896
+    Backbone.View = (function(View) {
+        return View.extend({
+            constructor: function(options) {
+                this.options = options || {};
+                View.apply(this, arguments);
+            }
+        });
+    })(Backbone.View);
 
     // Main entry point
 
@@ -113,7 +133,7 @@ if (!window.Pump) {
                 pair = Pump.getUserCred();
 
                 if (pair) {
-                    
+
                     // We need to renew the session, for images and objects and so on.
 
                     Pump.renewSession(function(err, data) {
@@ -216,7 +236,7 @@ if (!window.Pump) {
         }
 
         console.log(msg);
-        
+
         if (Pump.body && Pump.body.nav) {
             var $nav = Pump.body.nav.$el,
                 $alert = $("#error-popup");
@@ -224,10 +244,10 @@ if (!window.Pump) {
             if ($alert.length === 0) {
                 $alert = $('<div id="error-popup" class="alert-error" style="display: none; margin-top: 0px; text-align: center">'+
                            '<button type="button" class="close" data-dismiss="alert">&times;</button>'+
-                           '<span class="error-message">'+msg+'</span>'+
-                           '</div>');
+                           '<span class="error-message">'+msg+"</span>"+
+                           "</div>");
                 $nav.after($alert);
-                $alert.slideDown('fast');
+                $alert.slideDown("fast");
             } else {
                 $(".error-message", $alert).text(msg);
             }
@@ -249,11 +269,11 @@ if (!window.Pump) {
 
         var here = window.location;
 
-        if (url.indexOf(':') == -1) {
-            if (url.substr(0, 1) == '/') {
-                url = here.protocol + '//' + here.host + url;
+        if (url.indexOf(":") == -1) {
+            if (url.substr(0, 1) == "/") {
+                url = here.protocol + "//" + here.host + url;
             } else {
-                url = here.href.substr(0, here.href.lastIndexOf('/') + 1) + url;
+                url = here.href.substr(0, here.href.lastIndexOf("/") + 1) + url;
             }
         }
 
@@ -351,8 +371,8 @@ if (!window.Pump) {
         "emphasis": function(locale) {
             return "<li>" +
                 "<div class='btn-group'>" +
-                "<a class='btn' data-wysihtml5-command='bold' title='"+locale.emphasis.bold+"'><i class='icon-bold'></i></a>" +
-                "<a class='btn' data-wysihtml5-command='italic' title='"+locale.emphasis.italic+"'><i class='icon-italic'></i></a>" +
+                "<a class='btn' data-wysihtml5-command='bold' title='"+locale.emphasis.bold+"'><i class='fa fa-bold'></i></a>" +
+                "<a class='btn' data-wysihtml5-command='italic' title='"+locale.emphasis.italic+"'><i class='fa fa-italic'></i></a>" +
                 "<a class='btn' data-wysihtml5-command='underline' title='"+locale.emphasis.underline+"'>_</a>" +
                 "</div>" +
                 "</li>";
@@ -366,8 +386,8 @@ if (!window.Pump) {
         // Set wysiwyg defaults
 
         $.fn.wysihtml5.defaultOptions["font-styles"] = false;
-        $.fn.wysihtml5.defaultOptions["image"] = false;
-        $.fn.wysihtml5.defaultOptions["customTemplates"] = Pump.wysihtml5Tmpl;
+        $.fn.wysihtml5.defaultOptions.image = false;
+        $.fn.wysihtml5.defaultOptions.customTemplates = Pump.wysihtml5Tmpl;
     };
 
     // Turn the querystring into an object
@@ -375,20 +395,20 @@ if (!window.Pump) {
     Pump.searchParams = function(str) {
         var params = {},
             pl     = /\+/g,
-            decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+            decode = function(s) { return decodeURIComponent(s.replace(pl, " ")); },
             pairs;
 
         if (!str) {
             str = window.location.search;
         }
-        
+
         pairs = str.substr(1).split("&");
 
         _.each(pairs, function(pairStr) {
             var pair = pairStr.split("=", 2),
                 key = decode(pair[0]),
                 value = (pair.length > 1) ? decode(pair[1]) : null;
-            
+
             params[key] = value;
         });
 
@@ -495,7 +515,7 @@ if (!window.Pump) {
 
     Pump.rel = function(url) {
 
-        var a = document.createElement('a'),
+        var a = document.createElement("a"),
             pathname;
 
         a.href = url;
@@ -505,11 +525,11 @@ if (!window.Pump) {
     };
 
     Pump.htmlEncode = function(value) {
-        return $('<div/>').text(value).html();
+        return $("<div/>").text(value).html();
     };
 
     Pump.htmlDecode = function(value) {
-        return $('<div/>').html(value).text();
+        return $("<div/>").html(value).text();
     };
 
     // Sets up the initial view and sub-views
@@ -553,6 +573,16 @@ if (!window.Pump) {
 
         // When I say "view" the crowd say "selector"
 
+        function processInitialData(value, name) {
+            if (name == View.prototype.modelName) {
+                options.model = def.models[name].unique(value);
+            } else if (def.models[name]) {
+                    options.data[name] = def.models[name].unique(value);
+            } else {
+                    options.data[name] = value;
+            }
+        }
+
         for (selector in selectorToView) {
             if (_.has(selectorToView, selector)) {
                 $el = $content.find(selector);
@@ -561,15 +591,7 @@ if (!window.Pump) {
                     View = def.View;
                     options = {el: $el, data: {}};
                     data = Pump.initialData;
-                    _.each(data, function(value, name) {
-                        if (name == View.prototype.modelName) {
-                            options.model = def.models[name].unique(value);
-                        } else if (def.models[name]) {
-                            options.data[name] = def.models[name].unique(value);
-                        } else {
-                            options.data[name] = value;
-                        }
-                    });
+                    _.each(data, processInitialData);
                     Pump.body.content = new View(options);
                     Pump.initialData = null;
                     break;

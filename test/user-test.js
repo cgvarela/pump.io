@@ -16,10 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     Activity = require("../lib/model/activity").Activity,
     modelBatch = require("./lib/model").modelBatch,
@@ -70,12 +72,12 @@ mb["When we require the user module"]
 ["and we create an user instance"]
 ["passed-in fields are there"] = function(err, created) {
     _.each(testData.create, function(value, key) {
-        if (key == "profile") {
+        if (key === "profile") {
             _.each(testData.create.profile, function(value, key) {
                 assert.deepEqual(created.profile[key], value);
             });
         } else {
-            assert.deepEqual(created[key], value); 
+            assert.deepEqual(created[key], value);
         }
     });
 };
@@ -274,7 +276,7 @@ suite.addBatch({
                         nickname: "dick",
                         password: "Aaf7Ieki"
                     };
-                    
+
                 User.create(props, function(err, user) {
                     if (err) {
                         cb(err, null);
@@ -368,7 +370,7 @@ suite.addBatch({
                         },
                         Activity = require("../lib/model/activity").Activity,
                         act = new Activity(props);
-                    
+
                     Step(
                         function() {
                             act.apply(user.profile, this);
@@ -583,7 +585,7 @@ suite.addBatch({
                         },
                         Activity = require("../lib/model/activity").Activity,
                         act = new Activity(props);
-                    
+
                     Step(
                         function() {
                             act.apply(user.profile, this);
@@ -1057,7 +1059,7 @@ var streamCountContext = function(streamgetter, targetCount) {
         assert.isObject(act);
         assert.isArray(activities);
         matches = activities.filter(function(item) {
-            return (item == act.id);
+            return (item === act.id);
         });
         assert.lengthOf(matches, targetCount);
     };
@@ -1088,19 +1090,19 @@ suite.addBatch({
         "it works": function(err, user) {
             assert.ifError(err);
         },
-        "and we check their minor inbox": 
+        "and we check their minor inbox":
         emptyStreamContext(function(user, callback) {
             user.getMinorInboxStream(callback);
         }),
-        "and we check their minor outbox": 
+        "and we check their minor outbox":
         emptyStreamContext(function(user, callback) {
             user.getMinorOutboxStream(callback);
         }),
-        "and we check their major inbox": 
+        "and we check their major inbox":
         emptyStreamContext(function(user, callback) {
             user.getMajorInboxStream(callback);
         }),
-        "and we check their major inbox": 
+        "and we check their major outbox":
         emptyStreamContext(function(user, callback) {
             user.getMajorOutboxStream(callback);
         })
@@ -1152,11 +1154,11 @@ suite.addBatch({
             "it works": function(err, activity, user) {
                 assert.ifError(err);
             },
-            "and we check their minor inbox": 
+            "and we check their minor inbox":
             notInStreamContext(function(user, callback) {
                 user.getMinorInboxStream(callback);
             }),
-            "and we check their minor outbox": 
+            "and we check their minor outbox":
             notInStreamContext(function(user, callback) {
                 user.getMinorOutboxStream(callback);
             }),
@@ -1217,11 +1219,11 @@ suite.addBatch({
             "it works": function(err, activity, user) {
                 assert.ifError(err);
             },
-            "and we check their minor inbox": 
+            "and we check their minor inbox":
             inStreamContext(function(user, callback) {
                 user.getMinorInboxStream(callback);
             }),
-            "and we check their minor outbox": 
+            "and we check their minor outbox":
             inStreamContext(function(user, callback) {
                 user.getMinorOutboxStream(callback);
             }),
@@ -1285,31 +1287,31 @@ var badNickname = function(nickname) {
 };
 
 suite.addBatch({
-    "When we create a new user with a long nickname less than 64 chars": 
+    "When we create a new user with a long nickname less than 64 chars":
     goodNickname("james_james_morrison_morrison_weatherby_george_dupree"),
-    "When we create a user with a nickname with a -": 
+    "When we create a user with a nickname with a -":
     goodNickname("captain-caveman"),
-    "When we create a user with a nickname with a _": 
+    "When we create a user with a nickname with a _":
     goodNickname("captain_caveman"),
-    "When we create a user with a nickname with a .": 
+    "When we create a user with a nickname with a .":
     goodNickname("captain.caveman"),
-    "When we create a user with a nickname with capital letters": 
+    "When we create a user with a nickname with capital letters":
     goodNickname("CaptainCaveman"),
-    "When we create a user with a nickname with one char": 
+    "When we create a user with a nickname with one char":
     goodNickname("c"),
-    "When we create a new user with a nickname longer than 64 chars": 
+    "When we create a new user with a nickname longer than 64 chars":
     badNickname("adolphblainecharlesdavidearlfrederickgeraldhubertirvimjohn"+
                 "kennethloydmartinnerooliverpaulquincyrandolphshermanthomasuncas"+
                 "victorwillianxerxesyancyzeus"),
-    "When we create a new user with a nickname with a forbidden character": 
+    "When we create a new user with a nickname with a forbidden character":
     badNickname("arnold/palmer"),
-    "When we create a new user with a nickname with a blank": 
+    "When we create a new user with a nickname with a blank":
     badNickname("Captain Caveman"),
-    "When we create a new user with an empty nickname": 
+    "When we create a new user with an empty nickname":
     badNickname(""),
-    "When we create a new user with nickname 'api'": 
+    "When we create a new user with nickname 'api'":
     badNickname("api"),
-    "When we create a new user with nickname 'oauth'": 
+    "When we create a new user with nickname 'oauth'":
     badNickname("oauth")
 });
 
@@ -1369,7 +1371,7 @@ suite.addBatch({
             "it works": function(err, user) {
                 assert.ifError(err);
             },
-            "and we check their direct inbox": 
+            "and we check their direct inbox":
             emptyStreamContext(function(user, callback) {
                 user.getDirectInboxStream(callback);
             }),
@@ -1405,7 +1407,7 @@ suite.addBatch({
                 assert.isObject(fromUser);
                 assert.isObject(toUser);
             },
-            "and one user sends a major activity to the other": 
+            "and one user sends a major activity to the other":
             activityMakerContext(
                 function(toUser, fromUser) {
                     return {
@@ -1419,20 +1421,20 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the recipient's direct inbox": 
+                    "and we check the recipient's direct inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the recipient's direct minor inbox": 
+                    "and we check the recipient's direct minor inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the recipient's direct major inbox": 
+                    "and we check the recipient's direct major inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
                 }),
-            "and one user sends a minor activity to the other": 
+            "and one user sends a minor activity to the other":
             activityMakerContext(
                 function(toUser, fromUser) {
                     return {
@@ -1446,20 +1448,20 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the recipient's direct inbox": 
+                    "and we check the recipient's direct inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the recipient's direct minor inbox": 
+                    "and we check the recipient's direct minor inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the recipient's direct major inbox": 
+                    "and we check the recipient's direct major inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
                 }),
-            "and one user sends a major activity bto the other": 
+            "and one user sends a major activity bto the other":
             activityMakerContext(
                 function(toUser, fromUser) {
                     return {
@@ -1473,20 +1475,20 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the recipient's direct inbox": 
+                    "and we check the recipient's direct inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the recipient's direct minor inbox": 
+                    "and we check the recipient's direct minor inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the recipient's direct major inbox": 
+                    "and we check the recipient's direct major inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
                 }),
-            "and one user sends a minor activity bto the other": 
+            "and one user sends a minor activity bto the other":
             activityMakerContext(
                 function(toUser, fromUser) {
                     return {
@@ -1500,15 +1502,15 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the recipient's direct inbox": 
+                    "and we check the recipient's direct inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the recipient's direct minor inbox": 
+                    "and we check the recipient's direct minor inbox":
                     inStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the recipient's direct major inbox": 
+                    "and we check the recipient's direct major inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
@@ -1530,15 +1532,15 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the other user's direct inbox": 
+                    "and we check the other user's direct inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the other user's direct minor inbox": 
+                    "and we check the other user's direct minor inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the other user's direct major inbox": 
+                    "and we check the other user's direct major inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
@@ -1558,15 +1560,15 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the other user's direct inbox": 
+                    "and we check the other user's direct inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the other user's direct minor inbox": 
+                    "and we check the other user's direct minor inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the other user's direct major inbox": 
+                    "and we check the other user's direct major inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
@@ -1586,15 +1588,15 @@ suite.addBatch({
                     };
                 },
                 {
-                    "and we check the other user's direct inbox": 
+                    "and we check the other user's direct inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectInboxStream(callback);
                     }),
-                    "and we check the other user's direct minor inbox": 
+                    "and we check the other user's direct minor inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMinorInboxStream(callback);
                     }),
-                    "and we check the other user's direct major inbox": 
+                    "and we check the other user's direct major inbox":
                     notInStreamContext(function(user, callback) {
                         user.getDirectMajorInboxStream(callback);
                     })
@@ -1623,7 +1625,7 @@ suite.addBatch({
             "it works": function(err, user) {
                 assert.ifError(err);
             },
-            "and we check their direct inbox": 
+            "and we check their direct inbox":
             emptyStreamContext(function(user, callback) {
                 user.uploadsStream(callback);
             })
@@ -1652,11 +1654,11 @@ suite.addBatch({
             "it works": function(err, user) {
                 assert.ifError(err);
             },
-            "and we check their following stream": 
+            "and we check their following stream":
             emptyStreamContext(function(user, callback) {
                 user.followingStream(callback);
             }),
-            "and we check their followers stream": 
+            "and we check their followers stream":
             emptyStreamContext(function(user, callback) {
                 user.followersStream(callback);
             })

@@ -16,16 +16,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     newClient = oauthutil.newClient,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
@@ -93,7 +96,7 @@ var sameUser = function(url, objects) {
                 assert.include(activity, "object");
                 assert.isObject(activity.object);
                 assert.include(activity.object, "liked");
-                if (activity.object.secretNumber % 2 == 0) {
+                if (activity.object.secretNumber % 2 === 0) {
                     assert.isTrue(activity.object.liked);
                 } else {
                     assert.isFalse(activity.object.liked);
@@ -101,7 +104,7 @@ var sameUser = function(url, objects) {
             });
         };
     }
-    
+
     return ctx;
 };
 
@@ -161,7 +164,7 @@ var justClient = function(url, objects) {
             });
         };
     }
-    
+
     return ctx;
 };
 
@@ -220,25 +223,14 @@ var otherUser = function(url, objects) {
             });
         };
     }
-    
+
     return ctx;
 };
 
 // A batch to test favoriting/unfavoriting objects
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client": {
             topic: function() {
                 newClient(this.callback);
@@ -266,7 +258,7 @@ suite.addBatch({
                                 var group = this.group();
                                 _.times(20, function(i) {
                                     var act = {
-                                        to: [pair.user.profile], 
+                                        to: [pair.user.profile],
                                         cc: [{objectType: "collection",
                                               id: "http://activityschema.org/collection/public"}],
                                         verb: "post",
@@ -283,7 +275,7 @@ suite.addBatch({
                                 var group = this.group();
                                 if (err) throw err;
                                 _.each(posts, function(post, i) {
-                                    if (post.object.secretNumber % 2 == 0) {
+                                    if (post.object.secretNumber % 2 === 0) {
                                         var act = {
                                             verb: "favorite",
                                             object: post.object
@@ -304,17 +296,17 @@ suite.addBatch({
                     "it works": function(err) {
                         assert.ifError(err);
                     },
-                    "and we check their major inbox with same user credentials": 
+                    "and we check their major inbox with same user credentials":
                     sameUser("http://localhost:4815/api/user/allan/inbox/major"),
-                    "and we check their major feed with same user credentials": 
+                    "and we check their major feed with same user credentials":
                     sameUser("http://localhost:4815/api/user/allan/feed/major"),
                     "and we check their major direct inbox with same user credentials":
                     sameUser("http://localhost:4815/api/user/allan/inbox/direct/major"),
-                    "and we check their favorites with same user credentials": 
+                    "and we check their favorites with same user credentials":
                     sameUser("http://localhost:4815/api/user/allan/favorites", true),
                     "and we check their major feed with client credentials":
                     justClient("http://localhost:4815/api/user/allan/feed/major"),
-                    "and we check their favorites with client credentials": 
+                    "and we check their favorites with client credentials":
                     justClient("http://localhost:4815/api/user/allan/favorites", true),
                     "and we register another user": {
                         topic: function(pair, cl) {
@@ -332,7 +324,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

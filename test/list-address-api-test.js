@@ -16,15 +16,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Queue = require("jankyqueue"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
@@ -43,19 +46,8 @@ var makeCred = function(cl, pair) {
     };
 };
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client": {
             topic: function() {
                 newClient(this.callback);
@@ -67,7 +59,7 @@ suite.addBatch({
             "and we create a new user": {
                 topic: function(cl) {
                     var callback = this.callback;
-                    
+
                     Step(
                         function() {
                             var group = this.group();
@@ -121,7 +113,7 @@ suite.addBatch({
                             Step(
                                 function() {
                                     var group = this.group();
-                                    _.each(_.pluck(pairs.slice(1), "user"), function(user) {
+                                    _.each(_.map(pairs.slice(1), "user"), function(user) {
                                         httputil.postJSON("http://localhost:4815/api/user/fry/feed",
                                                           cred,
                                                           {
@@ -130,7 +122,7 @@ suite.addBatch({
                                                               target: list
                                                           },
                                                           group());
-                                        
+
                                     });
                                 },
                                 function(err, acts) {
@@ -149,7 +141,7 @@ suite.addBatch({
                             topic: function(list, pairs, cl) {
                                 var callback = this.callback,
                                     cred = makeCred(cl, pairs[0]);
-                                
+
                                 httputil.postJSON("http://localhost:4815/api/user/fry/feed",
                                                   cred,
                                                   {
@@ -179,7 +171,7 @@ suite.addBatch({
                                             _.each(pairs.slice(1), function(pair) {
                                                 var user = pair.user,
                                                     cred = makeCred(cl, pair);
-                                                
+
                                                 httputil.getJSON("http://localhost:4815/api/user/"+user.nickname+"/inbox",
                                                                  cred,
                                                                  group());
@@ -202,7 +194,7 @@ suite.addBatch({
                                         assert.isArray(feed.items);
                                         assert.greater(feed.items.length, 0);
                                         assert.isTrue(_.some(feed.items, function(item) {
-                                            return (item.id == act.id);
+                                            return (item.id === act.id);
                                         }));
                                     });
                                 }
@@ -219,7 +211,7 @@ suite.addBatch({
                         list,
                         act,
                         q = new Queue(25);
-                    
+
                     Step(
                         function() {
                             var i, group = this.group();
@@ -250,7 +242,7 @@ suite.addBatch({
                             if (err) throw err;
                             list = act.object;
                             cred = makeCred(cl, pairs[0]);
-                            _.each(_.pluck(pairs.slice(1), "user"), function(user) {
+                            _.each(_.map(pairs.slice(1), "user"), function(user) {
                                 q.enqueue(httputil.postJSON,
                                           ["http://localhost:4815/api/user/robot0/feed",
                                            cred,
@@ -261,7 +253,7 @@ suite.addBatch({
                                            }
                                           ],
                                           group());
-                                
+
                             });
                         },
                         function(err, responses) {
@@ -315,13 +307,13 @@ suite.addBatch({
                         assert.isArray(feed.items);
                         assert.greater(feed.items.length, 0);
                         assert.isTrue(_.some(feed.items, function(item) {
-                            return (item.id == act.id);
+                            return (item.id === act.id);
                         }));
                     });
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

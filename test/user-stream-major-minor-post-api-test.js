@@ -16,35 +16,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials;
 
 var suite = vows.describe("Posting to major and minor streams API test");
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a user": {
             topic: function(app) {
                 Step(
@@ -71,7 +63,7 @@ suite.addBatch({
                             }
                         },
                         url = "http://localhost:4815/api/user/snail/feed/major";
-                    
+
                     httputil.postJSON(url, cred, act, function(err, doc, response) {
                         cb(err, doc);
                     });
@@ -84,7 +76,7 @@ suite.addBatch({
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed/major";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -95,14 +87,14 @@ suite.addBatch({
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
                         assert.greater(doc.items.length, 0);
-                        assert.isTrue(_.any(doc.items, function(item) { return item.id == act.id; }));
+                        assert.isTrue(_.some(doc.items, function(item) { return item.id === act.id; }));
                     }
                 },
                 "and we check the feed": {
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -113,14 +105,14 @@ suite.addBatch({
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
                         assert.greater(doc.items.length, 0);
-                        assert.isTrue(_.any(doc.items, function(item) { return item.id == act.id; }));
+                        assert.isTrue(_.some(doc.items, function(item) { return item.id === act.id; }));
                     }
                 },
                 "and we check the minor feed": {
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed/minor";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -130,7 +122,7 @@ suite.addBatch({
                         assert.isObject(doc);
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
-                        assert.isTrue(_.every(doc.items, function(item) { return item.id != act.id; }));
+                        assert.isTrue(_.every(doc.items, function(item) { return item.id !== act.id; }));
                     }
                 }
             },
@@ -147,7 +139,7 @@ suite.addBatch({
                             }
                         },
                         url = "http://localhost:4815/api/user/snail/feed/major";
-                    
+
                     httputil.postJSON(url, cred, act, function(err, doc, response) {
                         if (err && err.statusCode >= 400 && err.statusCode < 500) {
                             cb(null);
@@ -175,7 +167,7 @@ suite.addBatch({
                             }
                         },
                         url = "http://localhost:4815/api/user/snail/feed/minor";
-                    
+
                     httputil.postJSON(url, cred, act, function(err, doc, response) {
                         cb(err, doc);
                     });
@@ -188,7 +180,7 @@ suite.addBatch({
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed/minor";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -199,14 +191,14 @@ suite.addBatch({
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
                         assert.greater(doc.items.length, 0);
-                        assert.isTrue(_.any(doc.items, function(item) { return item.id == act.id; }));
+                        assert.isTrue(_.some(doc.items, function(item) { return item.id === act.id; }));
                     }
                 },
                 "and we check the feed": {
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -217,14 +209,14 @@ suite.addBatch({
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
                         assert.greater(doc.items.length, 0);
-                        assert.isTrue(_.any(doc.items, function(item) { return item.id == act.id; }));
+                        assert.isTrue(_.some(doc.items, function(item) { return item.id === act.id; }));
                     }
                 },
                 "and we check the major feed": {
                     topic: function(act, cred) {
                         var cb = this.callback,
                             url = "http://localhost:4815/api/user/snail/feed/major";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, response) {
                             cb(err, doc, act);
                         });
@@ -234,7 +226,7 @@ suite.addBatch({
                         assert.isObject(doc);
                         assert.include(doc, "items");
                         assert.isArray(doc.items);
-                        assert.isTrue(_.every(doc.items, function(item) { return item.id != act.id; }));
+                        assert.isTrue(_.every(doc.items, function(item) { return item.id !== act.id; }));
                     }
                 }
             },
@@ -251,7 +243,7 @@ suite.addBatch({
                             }
                         },
                         url = "http://localhost:4815/api/user/snail/feed/minor";
-                    
+
                     httputil.postJSON(url, cred, act, function(err, doc, response) {
                         if (err && err.statusCode >= 400 && err.statusCode < 500) {
                             cb(null);
@@ -267,7 +259,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

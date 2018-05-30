@@ -16,11 +16,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     fs = require("fs"),
     path = require("path"),
     URLMaker = require("../lib/urlmaker").URLMaker,
@@ -34,7 +36,7 @@ var suite = vows.describe("activity module interface");
 var tc = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 
 var testSchema = {
-    pkey: "id", 
+    pkey: "id",
     fields: ["actor",
              "content",
              "generator",
@@ -191,7 +193,7 @@ mb["When we require the activity module"]
 ["and we create an activity instance"]
 ["passed-in fields are there"] = function(err, created) {
     var prop, orig = testData.create, child, cprop;
-    for (prop in _(orig).keys()) {
+    for (prop in _.keys(orig)) {
         if (_.isObject(orig[prop])) {
             assert.include(created, prop);
             child = orig[prop];
@@ -231,7 +233,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 mod = require("../lib/model/activity");
 
                 if (!mod) {
@@ -305,7 +307,7 @@ suite.addBatch({
                             content: "Feeling groovy."
                         }
                     });
-                
+
                 act.apply(null, function(err) {
                     if (err) {
                         cb(err, null);
@@ -924,7 +926,7 @@ suite.addBatch({
                     user1,
                     user2,
                     list;
-                
+
 
                 Step(
                     function() {
@@ -989,76 +991,13 @@ suite.addBatch({
                 assert.isTrue(isRecipient);
             }
         },
-        "and we check if a list non-member is a recipient of an activity sent to a list": {
-            topic: function(Activity) {
-                var User = require("../lib/model/user").User,
-                    Collection = require("../lib/model/collection").Collection,
-                    cb = this.callback,
-                    user1,
-                    user2,
-                    list;
-                
-
-                Step(
-                    function() {
-                        var props1 = {
-                            nickname: "jim",
-                            password: "dandy,fella"
-                        },
-                            props2 = {
-                            nickname: "zed",
-                            password: "is*dead,baby"
-                        };
-                        User.create(props1, this.parallel());
-                        User.create(props2, this.parallel());
-                    },
-                    function(err, result1, result2) {
-                        if (err) throw err;
-                        user1 = result1;
-                        user2 = result2;
-                        Collection.create({author: user1.profile,
-                                           displayName: "Test 1",
-                                           objectTypes: ["person"]},
-                                          this);
-                    },
-                    function(err, result) {
-                        if (err) throw err;
-                        list = result;
-                        var act = {
-                            actor: user1.profile,
-                            verb: "post",
-                            to: [list],
-                            object: {
-                                objectType: "note",
-                                content: "Hello, world!"
-                            }
-                        };
-                        Activity.create(act, this);
-                    },
-                    function(err, act) {
-                        if (err) throw err;
-                        act.checkRecipient(user2.profile, this);
-                    },
-                    cb
-                );
-            },
-            "it works": function(err, isRecipient) {
-                assert.ifError(err);
-                assert.isBoolean(isRecipient);
-            },
-            "it returns false": function(err, isRecipient) {
-                assert.ifError(err);
-                assert.isBoolean(isRecipient);
-                assert.isFalse(isRecipient);
-            }
-        },
         "and we check if a follower is a recipient of an activity sent to followers": {
             topic: function(Activity) {
                 var User = require("../lib/model/user").User,
                     cb = this.callback,
                     user1,
                     user2;
-                
+
 
                 Step(
                     function() {
@@ -1123,7 +1062,7 @@ suite.addBatch({
                     cb = this.callback,
                     user1,
                     user2;
-                
+
 
                 Step(
                     function() {
@@ -1186,7 +1125,7 @@ suite.addBatch({
                     user1,
                     user2,
                     list;
-                
+
 
                 Step(
                     function() {
@@ -1477,7 +1416,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 mod = require("../lib/model/activity");
 
                 if (!mod) {
@@ -1534,7 +1473,7 @@ suite.addBatch({
                     "the _received property contains the value we added": function(activity) {
                         assert.isArray(activity._received);
                         assert.isObject(_.find(activity._received, function(item) {
-                            return (item.id == "acct:gerald@photo.example" && item.objectType == "person");
+                            return (item.id === "acct:gerald@photo.example" && item.objectType === "person");
                         }));
                     }
                 },
@@ -1560,7 +1499,7 @@ suite.addBatch({
                     },
                     "our added object is a recipient": function(recipients) {
                         assert.isObject(_.find(recipients, function(item) {
-                            return (item.id == "acct:gerald@photo.example" && item.objectType == "person");
+                            return (item.id === "acct:gerald@photo.example" && item.objectType === "person");
                         }));
                     }
                 }

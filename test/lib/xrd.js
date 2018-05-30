@@ -14,18 +14,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     urlparse = require("url").parse,
     xml2js = require("xml2js"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     https = require("https");
 
 var getXRD = function(url) {
     var parts = urlparse(url),
-        mod = (parts.protocol == "https:") ? https : http;            
+        mod = (parts.protocol === "https:") ? https : http;
 
     return function() {
         var callback = this.callback,
@@ -44,7 +46,8 @@ var getXRD = function(url) {
                     callback(err, null, null);
                 });
                 res.on("end", function() {
-                    var parser = new xml2js.Parser();
+                    var parser = new xml2js.Parser({attrkey:"@"});
+
                     parser.parseString(body, function(err, doc) {
                         if (err) {
                             callback(err, null, null);
@@ -87,6 +90,8 @@ var xrdLinkCheck = function(def) {
                     }
                 }
             };
+
+        doc = doc.XRD;
         assert.ifError(err);
         assert.isObject(doc);
         assert.include(doc, "Link");
@@ -123,7 +128,7 @@ var xrdContext = function(url, def) {
 
 var getJRD = function(url) {
     var parts = urlparse(url),
-        mod = (parts.protocol == "https:") ? https : http;            
+        mod = (parts.protocol === "https:") ? https : http;
     return function() {
         var callback = this.callback,
             req;

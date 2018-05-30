@@ -16,32 +16,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp;
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup;
 
 var ignore = function(err) {};
 
 var suite = vows.describe("dialback endpoint API");
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            app.close();
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
-        "and we check the dialback endpoint": 
+suite.addBatch(
+    withAppSetup({
+        "and we check the dialback endpoint":
         httputil.endpoint("/api/dialback", ["POST"])
-    }
-});
+    })
+);
 
 suite["export"](module);

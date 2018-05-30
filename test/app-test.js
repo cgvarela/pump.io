@@ -16,19 +16,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
+// TODO: this needs to be updated/expanded for Express 3.x
+
 var assert = require("assert"),
     vows = require("vows"),
     fs = require("fs"),
-    path = require("path");
+    path = require("path"),
+    proxyquire = require("proxyquire");
 
 var ignore = function(err) {};
 
 var suite = vows.describe("app module interface");
 
+process.on("uncaughtException", function(err) {
+    console.error(err);
+});
+
 suite.addBatch({
     "When we get the app module": {
-        topic: function() { 
-            return require("../lib/app");
+        topic: function() {
+            // lib/app.js expects to be run in a cluster worker with cluster.worker.on, etc.
+            return proxyquire("../lib/app", {
+                cluster: {
+                    worker: {
+                        on: ignore,
+                        // TODO test that the worker signals the master properly
+                        send: ignore
+                    }
+                }
+            });
         },
         "there is one": function(mod) {
             assert.isObject(mod);
@@ -44,6 +62,7 @@ var tc = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 suite.addBatch({
     "When we makeApp()": {
         topic: function() {
+            var cb = this.callback;
             var config = {port: 4815,
                           hostname: "localhost",
                           driver: tc.driver,
@@ -55,7 +74,10 @@ suite.addBatch({
 
             process.env.NODE_ENV = "test";
 
-            makeApp(config, this.callback);
+            makeApp(config, function(err, app) {
+              cb(err, app);
+            });
+            return undefined;
         },
         "it works": function(err, app) {
             assert.ifError(err);
@@ -63,11 +85,6 @@ suite.addBatch({
         },
         "app has the run() method": function(err, app) {
             assert.isFunction(app.run);
-        },
-        "app has the config property": function(err, app) {
-            assert.isObject(app.config);
-            assert.include(app.config, "hostname");
-            assert.equal(app.config.hostname, "localhost");
         },
         "and we app.run()": {
             topic: function(app) {

@@ -16,11 +16,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     fs = require("fs"),
     path = require("path"),
     Databank = databank.Databank,
@@ -34,7 +36,7 @@ var tc = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 
 suite.addBatch({
     "When we require the activityobject module": {
-        topic: function() { 
+        topic: function() {
             var cb = this.callback;
             // Need this to make IDs
 
@@ -50,7 +52,7 @@ suite.addBatch({
                 var cls;
 
                 DatabankObject.bank = db;
-                
+
                 cls = require("../lib/model/activityobject").ActivityObject || null;
 
                 cb(null, cls);
@@ -98,31 +100,6 @@ suite.addBatch({
                 });
             },
             "it works": function(err) {
-                assert.ifError(err);
-            }
-        },
-        "and we try to ensureObject with a non-string objectType": {
-            topic: function(ActivityObject) {
-                var callback = this.callback,
-                    props = {
-                        id: "urn:uuid:015a8bd6-b706-11e2-b87b-c8f73398600c",
-                        objectType: {
-                            left: 1,
-                            right: 2
-                        }
-                    };
-
-                ActivityObject.ensureObject(props, function(err, obj) {
-                    if (err && err instanceof TypeError) {
-                        callback(null);
-                    } else if (err) {
-                        callback(err);
-                    } else {
-                        callback(new Error("Unexpected success"));
-                    }
-                });
-            },
-            "it fails correctly": function(err) {
                 assert.ifError(err);
             }
         },
@@ -395,6 +372,27 @@ suite.addBatch({
             },
             "it fails correctly": function(err) {
                 assert.ifError(err);
+            }
+        },
+        "and we try to ensureObject with an identi.ca upstreamDuplicates object": {
+            topic: function(ActivityObject) {
+                var props = {
+                        id: "urn:uuid:cb8e1f0c-898d-45e5-b155-5d3e1bf0be72",
+                        objectType: "person",
+                        upstreamDuplicates: {0: "http://identi.ca/user/1"}
+                    };
+
+                ActivityObject.ensureObject(props, this.callback);
+            },
+            "it works": function(err, obj) {
+                assert.ifError(err);
+            },
+            "it patched up the data": function(err, obj) {
+                assert.isObject(obj);
+                assert.isArray(obj.upstreamDuplicates);
+                assert.equal(obj.upstreamDuplicates.length, 1);
+                assert.isString(obj.upstreamDuplicates[0]);
+                assert.equal(obj.upstreamDuplicates[0], "http://identi.ca/user/1");
             }
         },
         "and we try to ensureObject with non-string member of upstreamDuplicates": {

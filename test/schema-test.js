@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows");
 
@@ -26,7 +28,9 @@ var types = [
     "application",
     "article",
     "audio",
+    "authorizationcode",
     "badge",
+    "bearertoken",
     "binary",
     "bookmark",
     "client",
@@ -82,7 +86,7 @@ var types = [
 
 vows.describe("schema module interface").addBatch({
     "When we require the schema module": {
-        topic: function() { 
+        topic: function() {
             return require("../lib/schema");
         },
         "we get a module": function(schemamodule) {
@@ -130,4 +134,3 @@ vows.describe("schema module interface").addBatch({
         }
     }
 })["export"](module);
-

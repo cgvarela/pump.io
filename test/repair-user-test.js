@@ -16,13 +16,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var fs = require("fs"),
     path = require("path"),
     urlparse = require("url").parse,
     assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
-    _ = require("underscore-contrib"),
+    _ = require("lodash"),
     Step = require("step"),
     Activity = require("../lib/model/activity").Activity,
     User = require("../lib/model/user").User,
@@ -97,7 +99,7 @@ suite.addBatch({
                         profile.shares = {
                             url: "http://example.com/api/person/AAAAAAAA/shares"
                         };
-                        // Note: we're routing around the Person 
+                        // Note: we're routing around the Person
                         db.update("person", profile.id, profile, this);
                     },
                     function(err, results) {
@@ -132,7 +134,7 @@ suite.addBatch({
                         profile = user.profile;
                         delete profile.links["activity-inbox"];
                         delete profile.links["activity-outbox"];
-                        // Note: we're routing around the Person 
+                        // Note: we're routing around the Person
                         db.update("person", profile.id, profile, this);
                     },
                     function(err, results) {

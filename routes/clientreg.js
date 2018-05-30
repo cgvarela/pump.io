@@ -16,16 +16,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     validator = require("validator"),
-    check = validator.check,
     dialback = require("../lib/dialback"),
     maybeDialback = dialback.maybeDialback,
     Client = require("../lib/model/client").Client,
     HTTPError = require("../lib/httperror").HTTPError;
 
-var addRoutes = function(app) {
+var addRoutes = function(app, session) {
 
     // Client registration
 
@@ -44,7 +45,7 @@ var clientReg = function(req, res, next) {
     }
 
     type = params.type;
-    
+
     if (_(params).has("client_id")) {
         if (type !== "client_update") {
             // XXX: log this
@@ -75,12 +76,7 @@ var clientReg = function(req, res, next) {
         }
         props.contacts = params.contacts.split(" ");
         if (!props.contacts.every(function(contact) {
-                try {
-                    check(contact).isEmail();
-                    return true;
-                } catch (err) {
-                    return false;
-                }
+                return validator.isEmail(contact);
             })) {
             next(new HTTPError("contacts must be space-separate email addresses.", 400));
             return;
@@ -102,30 +98,23 @@ var clientReg = function(req, res, next) {
     }
 
     if (_(params).has("logo_url")) {
-        try {
-            check(params.logo_url).isUrl();
-            props.logo_url = params.logo_url;
-        } catch (e) {
+        if (!validator.isURL(params.logo_url)) {
             next(new HTTPError("Invalid logo_url.", 400));
             return;
         }
+        props.logo_url = params.logo_url;
     }
 
     if (_(params).has("redirect_uris")) {
         props.redirect_uris = params.redirect_uris.split(" ");
         if (!props.redirect_uris.every(function(uri) {
-                try {
-                    check(uri).isUrl();
-                    return true;
-                } catch (err) {
-                    return false;
-                }
+                return validator.isURL(uri);
             })) {
             next(new HTTPError("redirect_uris must be space-separated URLs.", 400));
             return;
         }
 
-        if (props.redirect_uris.length == 1) {
+        if (props.redirect_uris.length === 1) {
 
             // Does it look like glopped-together URLs?
 

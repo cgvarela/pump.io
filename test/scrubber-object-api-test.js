@@ -16,18 +16,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
     newClient = oauthutil.newClient,
@@ -37,10 +40,10 @@ var DANGEROUS = "This is a <script>alert('Boo!')</script> dangerous string.";
 var HARMLESS = "This is a harmless string.";
 
 var deepProperty = function(object, property) {
-    var i = property.indexOf('.');
+    var i = property.indexOf(".");
     if (!object) {
         return null;
-    } else if (i == -1) { // no dots
+    } else if (i === -1) { // no dots
         return object[property];
     } else {
         return deepProperty(object[property.substr(0, i)], property.substr(i + 1));
@@ -66,7 +69,7 @@ var updateObject = function(orig, update) {
                     if (err) throw err;
                     copied = _.extend(post.object, update);
                     url = post.object.links.self.href;
-                    httputil.putJSON(url, cred, update, this); 
+                    httputil.putJSON(url, cred, update, this);
                 },
                 function(err, updated) {
                     if (err) {
@@ -123,19 +126,8 @@ var suite = vows.describe("Scrubber Object API test");
 
 // A batch to test posting to the regular feed endpoint
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get a new set of credentials": {
             topic: function() {
                 oauthutil.newCredentials("dangermouse", "gad|gets", this.callback);
@@ -144,33 +136,33 @@ suite.addBatch({
                 assert.ifError(err);
                 assert.isObject(cred);
             },
-            "and we update an object with harmless content": 
+            "and we update an object with harmless content":
             goodUpdate({objectType: "note",
                         content: "Hello, World!"},
                        {content: HARMLESS},
                        "content"),
-            "and we update an object with dangerous content": 
+            "and we update an object with dangerous content":
             badUpdate({objectType: "note",
                         content: "Hello, World!"},
                        {content: DANGEROUS},
                        "content"),
-            "and we update an object with harmless summary": 
+            "and we update an object with harmless summary":
             goodUpdate({objectType: "note",
                         summary: "Hello, World!"},
                        {summary: HARMLESS},
                        "summary"),
-            "and we update an object with dangerous summary": 
+            "and we update an object with dangerous summary":
             badUpdate({objectType: "note",
                        summary: "Hello, World!"},
                       {summary: DANGEROUS},
                       "summary"),
-            "and we update an object with private member": 
+            "and we update an object with private member":
             privateUpdate({objectType: "note",
                            summary: "Hello, World!"},
                           {_uuid: "0xDEADBEEF"},
                           "_uuid")
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

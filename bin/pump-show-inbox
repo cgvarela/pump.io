@@ -2,9 +2,9 @@
 
 // -*- mode: javascript -*-
 
-// postnote.js
+// pump-show-inbox
 //
-// Post an image with optional description
+// show the user's inbox
 //
 // Copyright 2011-2013, E14N https://e14n.com/
 //
@@ -20,9 +20,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var fs = require("fs"),
     path = require("path"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     url = require("url"),
     common = require("../lib/pumpclient"),
@@ -56,8 +58,8 @@ Step(
         if (err) throw err;
         cred = results;
         endpoint = url.format({
-            protocol: ((port == 443) ? "https" : "http"),
-            host: ((port == 80 || port == 443) ? server : server + ":" + port),
+            protocol: ((port === 443) ? "https" : "http"),
+            host: ((port === 80 || port === 443) ? server : server + ":" + port),
             pathname: "/api/user/"+username+"/inbox"
         });
         getJSON(endpoint, cred, this);

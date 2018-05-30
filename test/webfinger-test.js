@@ -1,7 +1,7 @@
 // webfinger.js
 //
 // Tests the Webfinger JRD endpoints
-// 
+//
 // Copyright 2012 E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,21 +16,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     xml2js = require("xml2js"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     xrdutil = require("./lib/xrd"),
     actutil = require("./lib/activity"),
     pj = httputil.postJSON,
     gj = httputil.getJSON,
     validActivity = actutil.validActivity,
-    setupApp = oauthutil.setupApp;
+    withAppSetup = apputil.withAppSetup;
 
 var suite = vows.describe("webfinger endpoint test");
 
@@ -78,23 +81,12 @@ var webfinger = {
 
 // A batch to test endpoints
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
-        "and we check the webfinger endpoint": 
+suite.addBatch(
+    withAppSetup({
+        "and we check the webfinger endpoint":
         httputil.endpoint("/.well-known/webfinger", ["GET"]),
-         "and we get the webfinger endpoint with no uri":
-        httputil.getfail("/.well-known/webfinger", 400),
+        "and we get the webfinger endpoint with no uri":
+       httputil.getfail("/.well-known/webfinger", 400),
         "and we get the webfinger endpoint with an empty uri":
         httputil.getfail("/.well-known/webfinger?resource=", 404),
         "and we get the webfinger endpoint with an HTTP URI at some other domain":
@@ -103,22 +95,11 @@ suite.addBatch({
         httputil.getfail("/.well-known/webfinger?resource=evan@photo.example", 404),
         "and we get the webfinger endpoint with a Webfinger of a non-existent user":
         httputil.getfail("/.well-known/webfinger?resource=evan@localhost", 404)
-    }
-});
+    })
+);
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client and user": {
             topic: function() {
                 oauthutil.newCredentials("alice", "test+pass", this.callback);
@@ -186,7 +167,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

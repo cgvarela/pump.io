@@ -16,11 +16,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     simplesmtp = require("simplesmtp"),
     oauthutil = require("./oauth"),
+    apputil = require("./app"),
     httputil = require("./http"),
     Step = require("step"),
     http = require("http"),
@@ -28,20 +31,20 @@ var assert = require("assert"),
     accessToken = oauthutil.accessToken,
     register = oauthutil.register,
     registerEmail = oauthutil.registerEmail,
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig;
+    setupApp = apputil.setupApp,
+    setupAppConfig = apputil.setupAppConfig;
 
 var oneEmail = function(smtp, addr, callback) {
     var data,
         timeoutID,
         isOurs = function(envelope) {
-            return _.contains(envelope.to, addr);
+            return _.includes(envelope.to, addr);
         },
         starter = function(envelope) {
             if (isOurs(envelope)) {
                 data = "";
                 smtp.on("data", accumulator);
-                smtp.once("dataReady", ender);    
+                smtp.once("dataReady", ender);
             }
         },
         accumulator = function(envelope, chunk) {
@@ -92,7 +95,7 @@ var confirmEmail = function(message, callback) {
                 callback(null);
             }
         });
-    }).on('error', function(err) {
+    }).on("error", function(err) {
         callback(err);
     });
 };

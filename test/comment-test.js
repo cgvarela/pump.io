@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -57,9 +59,9 @@ var testData = {
         url: "http://example.com/comment/activity-stream-spec#comment1",
         content: "Nice job on the <strong>spec</strong>!",
         inReplyTo: {
-                url: "http://activitystrea.ms/specs/json/1.0/",
-                objectType: "article",
-                displayName: "JSON Activity Streams 1.0"
+            url: "http://activitystrea.ms/specs/json/1.0/",
+            objectType: "article",
+            displayName: "JSON Activity Streams 1.0"
         }
     },
     "update": {

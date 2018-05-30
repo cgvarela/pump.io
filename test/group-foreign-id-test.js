@@ -16,15 +16,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newClient = oauthutil.newClient,
     newPair = oauthutil.newPair,
     newCredentials = oauthutil.newCredentials,
@@ -36,19 +39,8 @@ var suite = vows.describe("group foreign id test");
 
 // A batch to test groups with foreign IDs
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a user": {
             topic: function() {
                 newCredentials("walter", "he1s3nbe4g", this.callback);
@@ -66,7 +58,7 @@ suite.addBatch({
                             httputil.getJSON(url, cred, this);
                         },
                         function(err, doc, response) {
-                            if (err && err.statusCode == 400) {
+                            if (err && err.statusCode === 400) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -89,7 +81,7 @@ suite.addBatch({
                             httputil.getJSON(url, cred, this);
                         },
                         function(err, doc, response) {
-                            if (err && err.statusCode == 404) {
+                            if (err && err.statusCode === 404) {
                                 cb(null);
                             } else if (err) {
                                 cb(err);
@@ -400,12 +392,12 @@ suite.addBatch({
                             if (err) throw err;
                             var activity = {
                                 "verb": "post",
-				object: {
-				    id: "http://photo.example/heisenberg/me-making-meth.jpg",
-				    objectType: "image",
-				    displayName: "Ha ha ha",
-				    url: "http://photo.example/heisenberg/me-making-meth.jpg"
-				},
+                                object: {
+                                    id: "http://photo.example/heisenberg/me-making-meth.jpg",
+                                    objectType: "image",
+                                    displayName: "Ha ha ha",
+                                    url: "http://photo.example/heisenberg/me-making-meth.jpg"
+                                },
                                 "target": {
                                     "objectType": "group",
                                     "id": "tag:pump.io,2012:test:group:4"
@@ -452,7 +444,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

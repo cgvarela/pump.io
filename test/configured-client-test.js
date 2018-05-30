@@ -16,34 +16,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var assert = require("assert"),
+"use strict";
+
+var fs = require("fs"),
+    path = require("path"),
+    assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     httputil = require("./lib/http"),
     gj = httputil.getJSON,
     pj = httputil.postJSON,
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
     validActivity = actutil.validActivity,
-    setupAppConfig = oauthutil.setupAppConfig,
+    setupApp = apputil.setupApp,
     newPair = oauthutil.newPair;
 
-var CLIENT_ID_1 = "AAAAAAAAAAAAAAAAAAAA",
-    CLIENT_SECRET_1 = "BBBBBBBBBBBBBBBBBBBB";
+var tc = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
+
+var CLIENT_ID_1 = tc.clients[0].client_id,
+    CLIENT_SECRET_1 = tc.clients[0].client_secret;
 
 var suite = vows.describe("configured client ID");
 
 suite.addBatch({
     "When we set up the app with a configured client": {
         topic: function() {
-	    var config = {
-		clients: [{
-		    client_id: CLIENT_ID_1,
-		    client_secret: CLIENT_SECRET_1
-		}]
-	    };
-            setupAppConfig(config, this.callback);
+            setupApp(this.callback);
         },
         teardown: function(app) {
             app.close();
@@ -51,59 +52,59 @@ suite.addBatch({
         "it works": function(err, app) {
             assert.ifError(err);
         },
-	"and we request the user stream with the configured client credentials": {
-	    topic: function() {
-		var callback = this.callback,
-		    cred = {
-			consumer_key: CLIENT_ID_1,
-			consumer_secret: CLIENT_SECRET_1
-		    };
+        "and we request the user stream with the configured client credentials": {
+            topic: function() {
+                var callback = this.callback,
+                    cred = {
+                        consumer_key: CLIENT_ID_1,
+                        consumer_secret: CLIENT_SECRET_1
+                    };
 
-		gj("http://localhost:4815/api/users", cred, callback);
-	    },
-	    "it works": function(err, body, resp) {
-		assert.ifError(err);
-		assert.isObject(body);
-	    }
-	},
-	"and we register a user with the configured client credentials": {
-	    topic: function() {
-		var callback = this.callback,
-		    cred = {
-			client_id: CLIENT_ID_1,
-			client_secret: CLIENT_SECRET_1
-		    };
+                gj("http://localhost:4815/api/users", cred, callback);
+            },
+            "it works": function(err, body, resp) {
+                assert.ifError(err);
+                assert.isObject(body);
+            }
+        },
+        "and we register a user with the configured client credentials": {
+            topic: function() {
+                var callback = this.callback,
+                    cred = {
+                        client_id: CLIENT_ID_1,
+                        client_secret: CLIENT_SECRET_1
+                    };
 
-		newPair(cred, "maude", "grumpy*666", callback);
-	    },
-	    "it works": function(err, pair) {
-		assert.ifError(err);
-		assert.isObject(pair);
-	    },
-	    "and we post a new activity with those credentials": {
-		topic: function(pair) {
-		    var callback = this.callback,
-			cred = _.extend({
-			    consumer_key: CLIENT_ID_1,
-			    consumer_secret: CLIENT_SECRET_1
-			}, pair),
-			url = "http://localhost:4815/api/user/maude/feed",
-			act = {
-			    verb: "post",
-			    object: {
-				objectType: "note",
-				content: "Hello, world."
-			    }
-			};
+                newPair(cred, "maude", "grumpy*666", callback);
+            },
+            "it works": function(err, pair) {
+                assert.ifError(err);
+                assert.isObject(pair);
+            },
+            "and we post a new activity with those credentials": {
+                topic: function(pair) {
+                    var callback = this.callback,
+                        cred = _.extend({
+                            consumer_key: CLIENT_ID_1,
+                            consumer_secret: CLIENT_SECRET_1
+                        }, pair),
+                        url = "http://localhost:4815/api/user/maude/feed",
+                        act = {
+                            verb: "post",
+                            object: {
+                                objectType: "note",
+                                content: "Hello, world."
+                            }
+                        };
 
-		    pj(url, cred, act, callback);
-		},
-		"it works": function(err, body) {
-		    assert.ifError(err);
-		    validActivity(body);
-		}
-	    }
-	}
+                    pj(url, cred, act, callback);
+                },
+                "it works": function(err, body) {
+                    assert.ifError(err);
+                    validActivity(body);
+                }
+            }
+        }
     }
 });
 

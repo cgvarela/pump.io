@@ -2,7 +2,7 @@
 
 // -*- mode: javascript -*-
 
-// pump-delete.js
+// pump-delete
 //
 // delete an object
 //
@@ -20,7 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     url = require("url"),
     common = require("../lib/pumpclient"),
@@ -28,7 +30,7 @@ var _ = require("underscore"),
     postJSON = common.postJSON,
     delJSON = common.delJSON,
     argv = require("optimist")
-        .usage("Usage: $0 -u <username> -n <your note>")
+        .usage("Usage: $0 -u <username> -i <your note>")
         .demand(["u", "i"])
         .alias("u", "username")
         .alias("i", "id")

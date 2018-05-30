@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
     newPair = oauthutil.newPair,
@@ -54,19 +57,8 @@ var clientCred = function(cl) {
 
 // A batch for testing the read access to the API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a new client": {
             topic: function() {
                 var cb = this.callback,
@@ -112,7 +104,7 @@ suite.addBatch({
                         var cb = this.callback,
                             cred = makeCred(cl, pair),
                             url = "http://localhost:4815/api/user/george/feed";
-                        
+
                         httputil.getJSON(url, cred, function(err, doc, resp) {
                             cb(err, doc);
                         });
@@ -122,7 +114,7 @@ suite.addBatch({
                         assert.ifError(err);
                         assert.isObject(doc);
                         assert.isArray(doc.items);
-                        reg = _.find(doc.items, function(activity) { return activity.verb == "join"; });
+                        reg = _.find(doc.items, function(activity) { return activity.verb === "join"; });
                         assert.ok(reg);
                         assert.isObject(reg.generator);
                         assert.equal(reg.generator.displayName, "Generator Test");
@@ -140,7 +132,7 @@ suite.addBatch({
                                     content: "Hello, world!"
                                 }
                             };
-                        
+
                         httputil.postJSON(url, cred, act, function(err, doc, resp) {
                             cb(err, doc);
                         });
@@ -165,7 +157,7 @@ suite.addBatch({
                                     content: "i love george"
                                 }
                             };
-                        
+
                         httputil.postJSON(url, cred, act, function(err, doc, resp) {
                             cb(err, doc);
                         });
@@ -190,7 +182,7 @@ suite.addBatch({
                                     displayName: "rosy2.jpg"
                                 }
                             };
-                        
+
                         httputil.postJSON(url, cred, act, function(err, doc, resp) {
                             cb(err, doc);
                         });
@@ -212,7 +204,7 @@ suite.addBatch({
                                 id: "urn:uuid:b7144562-486f-11e2-b1c7-2c8158efb9e9",
                                 displayName: "Cosmo G. Spacely"
                             };
-                        
+
                         httputil.postJSON(url, cred, person, function(err, doc, resp) {
                             cb(err);
                         });
@@ -225,7 +217,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 cred = makeCred(cl, pair),
                                 url = "http://localhost:4815/api/user/george/feed";
-                            
+
                             httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
@@ -236,8 +228,8 @@ suite.addBatch({
                             assert.isObject(doc);
                             assert.isArray(doc.items);
                             follow = _.find(doc.items, function(activity) {
-                                return activity.verb == "follow" &&
-                                    activity.object.id == "urn:uuid:b7144562-486f-11e2-b1c7-2c8158efb9e9";
+                                return activity.verb === "follow" &&
+                                    activity.object.id === "urn:uuid:b7144562-486f-11e2-b1c7-2c8158efb9e9";
                             });
                             assert.ok(follow);
                             assert.isObject(follow.generator);
@@ -255,7 +247,7 @@ suite.addBatch({
                                 id: "urn:uuid:298cd086-4871-11e2-adf2-2c8158efb9e9",
                                 displayName: "IMG3143.JPEG"
                             };
-                        
+
                         httputil.postJSON(url, cred, image, function(err, doc, resp) {
                             cb(err);
                         });
@@ -268,7 +260,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 cred = makeCred(cl, pair),
                                 url = "http://localhost:4815/api/user/george/feed";
-                            
+
                             httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
@@ -279,8 +271,8 @@ suite.addBatch({
                             assert.isObject(doc);
                             assert.isArray(doc.items);
                             favorite = _.find(doc.items, function(activity) {
-                                return activity.verb == "favorite" &&
-                                    activity.object.id == "urn:uuid:298cd086-4871-11e2-adf2-2c8158efb9e9";
+                                return activity.verb === "favorite" &&
+                                    activity.object.id === "urn:uuid:298cd086-4871-11e2-adf2-2c8158efb9e9";
                             });
                             assert.ok(favorite);
                             assert.isObject(favorite.generator);
@@ -303,7 +295,7 @@ suite.addBatch({
                                         content: "Stop this crazy thing."
                                     }
                                 };
-                        
+
                                 httputil.postJSON(url, cred, act, this);
                             },
                             function(err, doc, resp) {
@@ -327,7 +319,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 cred = makeCred(cl, pair),
                                 url = "http://localhost:4815/api/user/george/feed";
-                            
+
                             httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
@@ -338,8 +330,8 @@ suite.addBatch({
                             assert.isObject(doc);
                             assert.isArray(doc.items);
                             update = _.find(doc.items, function(activity) {
-                                return activity.verb == "update" &&
-                                    activity.object.content == "Stop this crazy thing!!!!!!!!!";
+                                return activity.verb === "update" &&
+                                    activity.object.content === "Stop this crazy thing!!!!!!!!!";
                             });
                             assert.ok(update);
                             assert.isObject(update.generator);
@@ -362,7 +354,7 @@ suite.addBatch({
                                         content: "I quit."
                                     }
                                 };
-                        
+
                                 httputil.postJSON(url, cred, act, this);
                             },
                             function(err, doc, resp) {
@@ -385,7 +377,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 cred = makeCred(cl, pair),
                                 url = "http://localhost:4815/api/user/george/feed";
-                            
+
                             httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
@@ -396,7 +388,7 @@ suite.addBatch({
                             assert.isObject(doc);
                             assert.isArray(doc.items);
                             del = _.find(doc.items, function(activity) {
-                                return activity.verb == "delete";
+                                return activity.verb === "delete";
                             });
                             assert.ok(del);
                             assert.isObject(del.generator);
@@ -418,7 +410,7 @@ suite.addBatch({
                                 var list, person;
                                 if (err) throw err;
                                 list = _.find(doc.items, function(item) {
-                                    return item.displayName == "Family";
+                                    return item.displayName === "Family";
                                 });
                                 if (!list) {
                                     throw new Error("No 'Family' list found");
@@ -443,7 +435,7 @@ suite.addBatch({
                             var cb = this.callback,
                                 cred = makeCred(cl, pair),
                                 url = "http://localhost:4815/api/user/george/feed";
-                            
+
                             httputil.getJSON(url, cred, function(err, doc, resp) {
                                 cb(err, doc);
                             });
@@ -454,7 +446,7 @@ suite.addBatch({
                             assert.isObject(doc);
                             assert.isArray(doc.items);
                             add = _.find(doc.items, function(activity) {
-                                return activity.verb == "add";
+                                return activity.verb === "add";
                             });
                             assert.ok(add);
                             assert.isObject(add.generator);
@@ -464,7 +456,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

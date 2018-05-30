@@ -16,7 +16,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -59,7 +61,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 var Stream = require("../lib/model/stream").Stream;
                 cb(null, Stream);
             });
@@ -191,7 +193,7 @@ suite.addBatch({
                                 throw theError;
                             },
                             function(err) {
-                                if (err == theError) {
+                                if (err === theError) {
                                     callback(null);
                                 } else if (err) {
                                     callback(err);

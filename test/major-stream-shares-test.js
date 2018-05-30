@@ -16,16 +16,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     newClient = oauthutil.newClient,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials,
@@ -155,7 +158,7 @@ var sameUser = function(url, objects) {
             "all items have shared = false": sharedIs(false)
         }
     };
-    
+
     return ctx;
 };
 
@@ -195,7 +198,7 @@ var justClient = function(url, objects) {
             "no items have the shared flag": noShared
         }
     };
-    
+
     return ctx;
 };
 
@@ -233,25 +236,14 @@ var otherUser = function(url, objects) {
             "all items have correct shared value": sharedIs(true)
         }
     };
-    
+
     return ctx;
 };
 
 // A batch to test favoriting/unfavoriting objects
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client": {
             topic: function() {
                 newClient(this.callback);
@@ -291,7 +283,7 @@ suite.addBatch({
                                 var group = this.group();
                                 _.times(20, function(i) {
                                     var act = {
-                                        to: [pair0.user.profile], 
+                                        to: [pair0.user.profile],
                                         cc: [{objectType: "collection",
                                               id: "http://activityschema.org/collection/public"}],
                                         verb: "post",
@@ -330,9 +322,9 @@ suite.addBatch({
                     "it works": function(err) {
                         assert.ifError(err);
                     },
-                    "and we check their major inbox with same user credentials": 
+                    "and we check their major inbox with same user credentials":
                     sameUser("http://localhost:4815/api/user/thecat/inbox/major"),
-                    "and we check their major feed with same user credentials": 
+                    "and we check their major feed with same user credentials":
                     sameUser("http://localhost:4815/api/user/thecat/feed/major"),
                     "and we check their major direct inbox with same user credentials":
                     sameUser("http://localhost:4815/api/user/thecat/inbox/direct/major"),
@@ -343,7 +335,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

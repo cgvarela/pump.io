@@ -16,13 +16,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var connect = require("connect"),
-    send = connect.middleware.static.send,
-    cutils = connect.utils,
+"use strict";
+
+var send = require("send"),
     fs = require("fs"),
     path = require("path"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Activity = require("../lib/model/activity").Activity,
     HTTPError = require("../lib/httperror").HTTPError,
     mm = require("../lib/mimemap"),
@@ -38,9 +38,9 @@ var connect = require("connect"),
 
 var EXPIRES = 365 * 24 * 60 * 60 * 1000;
 
-var addRoutes = function(app) {
-    if (app.session) {
-        app.get("/uploads/*", app.session, everyAuth, uploadedFile);
+var addRoutes = function(app, session) {
+    if (session) {
+        app.get("/uploads/*", session, everyAuth, uploadedFile);
     } else {
         app.get("/uploads/*", everyAuth, uploadedFile);
     }
@@ -62,7 +62,8 @@ var everyAuth = function(req, res, next) {
 
 var uploadedFile = function(req, res, next) {
     var slug = req.params[0],
-        ext = slug.match(/\.(.*)$/)[1],
+        file = _.isString(slug) && slug.match(/\.(.*)$/),
+        ext = _.isArray(file) ? file[1] : null,
         type = extToType(ext),
         Cls = typeToClass(type),
         profile = req.principal,
@@ -72,6 +73,13 @@ var uploadedFile = function(req, res, next) {
 
     Step(
         function() {
+            if (!ext || !type) {
+                throw new HTTPError("Not allowed", 403);
+            }
+            this();
+        },
+        function(err) {
+            if (err) throw err;
             Cls.search({_slug: slug}, this);
         },
         function(err, objs) {
@@ -90,8 +98,8 @@ var uploadedFile = function(req, res, next) {
             obj = objs[0];
             if (profile &&
                 obj.author &&
-                profile.id == obj.author.id) {
-                send(req, res, next, {path: slug, root: req.app.config.uploaddir});
+                profile.id === obj.author.id) {
+                send(req, req.app.config.uploaddir + "/" +  slug).pipe(res);
                 return;
             }
             Activity.postOf(obj, this);
@@ -109,7 +117,7 @@ var uploadedFile = function(req, res, next) {
             } else if (!flag) {
                 next(new HTTPError("Not allowed", 403));
             } else {
-                send(req, res, next, {path: slug, root: req.app.config.uploaddir});
+                send(req, req.app.config.uploaddir + "/" +  slug).pipe(res);
             }
         }
     );

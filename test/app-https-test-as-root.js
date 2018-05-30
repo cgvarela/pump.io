@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     fs = require("fs"),
@@ -29,7 +31,7 @@ var assert = require("assert"),
     oauthutil = require("./lib/oauth"),
     xrdutil = require("./lib/xrd");
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 var suite = vows.describe("smoke test app interface over https");
 
@@ -53,7 +55,7 @@ var makeCred = function(cl, pair) {
 
 var httpsURL = function(url) {
     var parts = urlparse(url);
-    return parts.protocol == "https:";
+    return parts.protocol === "https:";
 };
 
 // hostmeta links
@@ -138,7 +140,7 @@ suite.addBatch({
                           nologger: true,
                           sockjs: false
                          },
-                makeApp = require("../lib/app").makeApp;
+                makeApp = require("./lib/app").proxyquiredMakeApp;
 
             process.env.NODE_ENV = "test";
 
@@ -171,7 +173,7 @@ suite.addBatch({
                 var addr = app.address();
                 assert.equal(addr.port, 443);
             },
-            "and we GET the host-meta file": 
+            "and we GET the host-meta file":
             xrdutil.xrdContext("https://secure.localhost/.well-known/host-meta",
                                hostmeta),
             "and we GET the host-meta.json file":
@@ -241,7 +243,7 @@ suite.addBatch({
                                                     {nickname: "caterpillar", password: "mush+room"},
                                                     "secure.localhost",
                                                     443,
-                                                    this.callback); 
+                                                    this.callback);
                             },
                             "it works": function(err, verifier) {
                                 assert.ifError(err);

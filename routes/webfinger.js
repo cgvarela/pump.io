@@ -16,13 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var urlparse = require("url").parse,
     databank = require("databank"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
-    validator = require("validator"),
-    check = validator.check,
-    sanitize = validator.sanitize,
     HTTPError = require("../lib/httperror").HTTPError,
     URLMaker = require("../lib/urlmaker").URLMaker,
     User = require("../lib/model/user").User,
@@ -30,7 +29,7 @@ var urlparse = require("url").parse,
 
 // Initialize the app controller
 
-var addRoutes = function(app) {
+var addRoutes = function(app, session) {
     app.get("/.well-known/host-meta", hostMeta);
     app.get("/.well-known/host-meta.json", hostMetaJSON);
     app.get("/api/lrdd", lrddUser, lrdd);
@@ -112,7 +111,7 @@ var hostMeta = function(req, res, next) {
     for (i = 0; i < links.length; i++) {
         res.write(Link(links[i]) + "\n");
     }
-    
+
     res.end("</XRD>\n");
 };
 
@@ -149,7 +148,7 @@ var lrddUser = function(req, res, next) {
         return;
     }
 
-    if (parts.hostname != URLMaker.hostname) {
+    if (parts.hostname !== URLMaker.hostname) {
         next(new HTTPError("Unrecognized host", 404));
         return;
     }
@@ -166,7 +165,7 @@ var lrddUser = function(req, res, next) {
                 user.expand(this);
             },
             function(err) {
-                if (err && err.name == "NoSuchThingError") {
+                if (err && err.name === "NoSuchThingError") {
                     next(new HTTPError(err.message, 404));
                 } else if (err) {
                     next(err);
@@ -187,7 +186,7 @@ var lrddUser = function(req, res, next) {
         }
         var type = match[1];
         ActivityObject.getObject(type, resource, function(err, obj) {
-            if (err && err.name == "NoSuchThingError") {
+            if (err && err.name === "NoSuchThingError") {
                 next(new HTTPError(err.message, 404));
             } else if (err) {
                 next(err);
@@ -264,7 +263,7 @@ var lrdd = function(req, res, next) {
     for (i = 0; i < links.length; i++) {
         res.write(Link(links[i]) + "\n");
     }
-    
+
     res.end("</XRD>\n");
 };
 

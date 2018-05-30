@@ -2,9 +2,9 @@
 
 // -*- mode: javascript -*-
 
-// postnote.js
+// pump-create-group
 //
-// Post a note with the given text
+// create a group
 //
 // Copyright 2011-2012, E14N https://e14n.com/
 //
@@ -20,7 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     url = require("url"),
     common = require("../lib/pumpclient"),
@@ -54,13 +56,13 @@ Step(
         var activity = {
             "verb": "create",
             "object": {
-	        "objectType": "group",
-	        "displayName": note
+                "objectType": "group",
+                "displayName": note
             }
         };
         var endpoint = url.format({
-            protocol: ((port == 443) ? "https" : "http"),
-            host: ((port == 80) ? server : server + ":" + port),
+            protocol: ((port === 443) ? "https" : "http"),
+            host: ((port === 80) ? server : server + ":" + port),
             pathname: "/api/user/"+username+"/feed"
         });
         postJSON(endpoint, cred, activity, this);

@@ -16,16 +16,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 // Adds to globals
-require("set-immediate");
 
 var databank = require("databank"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     validator = require("validator"),
     OAuth = require("oauth-evanp").OAuth,
-    check = validator.check,
-    sanitize = validator.sanitize,
     filters = require("../lib/filters"),
     version = require("../lib/version").version,
     HTTPError = require("../lib/httperror").HTTPError,
@@ -55,6 +54,10 @@ var databank = require("databank"),
     mm = require("../lib/mimemap"),
     saveUpload = require("../lib/saveupload").saveUpload,
     streams = require("../lib/streams"),
+    as2 = require("../lib/as2"),
+    as2headers = require("../lib/as2headers"),
+    wantAS2 = as2headers.wantAS2,
+    maybeAS2 = as2headers.maybeAS2,
     reqUser = mw.reqUser,
     reqGenerator = mw.reqGenerator,
     sameUser = mw.sameUser,
@@ -86,9 +89,9 @@ var databank = require("databank"),
 
 // Initialize the app controller
 
-var addRoutes = function(app) {
+var addRoutes = function(app, session) {
 
-    var smw = (app.session) ? [app.session] : [];
+    var smw = (session) ? [session] : [];
 
     // Proxy to a remote server
 
@@ -97,7 +100,7 @@ var addRoutes = function(app) {
     // Users
     app.get("/api/user/:nickname", smw, anyReadAuth, reqUser, getUser);
     app.put("/api/user/:nickname", userWriteOAuth, reqUser, sameUser, putUser);
-    app.del("/api/user/:nickname", userWriteOAuth, reqUser, sameUser, delUser);
+    app.delete("/api/user/:nickname", userWriteOAuth, reqUser, sameUser, delUser);
 
     app.get("/api/user/:nickname/profile", smw, anyReadAuth, reqUser, personType, getObject);
     app.put("/api/user/:nickname/profile", userWriteOAuth, reqUser, sameUser, personType, reqGenerator, putObject);
@@ -163,7 +166,7 @@ var addRoutes = function(app) {
 
     app.get("/api/activity/:uuid", smw, anyReadAuth, reqActivity, actorOrRecipient, getActivity);
     app.put("/api/activity/:uuid", userWriteOAuth, reqActivity, actorOnly, putActivity);
-    app.del("/api/activity/:uuid", userWriteOAuth, reqActivity, actorOnly, delActivity);
+    app.delete("/api/activity/:uuid", userWriteOAuth, reqActivity, actorOnly, delActivity);
 
     // Collection members
 
@@ -193,7 +196,7 @@ var addRoutes = function(app) {
 
     app.get("/api/:type/:uuid", smw, anyReadAuth, requestObject, authorOrRecipient, getObject);
     app.put("/api/:type/:uuid", userWriteOAuth, requestObject, authorOnly, reqGenerator, putObject);
-    app.del("/api/:type/:uuid", userWriteOAuth, requestObject, authorOnly, reqGenerator, deleteObject);
+    app.delete("/api/:type/:uuid", userWriteOAuth, requestObject, authorOnly, reqGenerator, deleteObject);
 
     app.get("/api/:type/:uuid/likes", smw, anyReadAuth, requestObject, authorOrRecipient, objectLikes);
     app.get("/api/:type/:uuid/replies", smw, anyReadAuth, requestObject, authorOrRecipient, objectReplies);
@@ -262,7 +265,7 @@ var userOnly = function(req, res, next) {
 var actorOnly = function(req, res, next) {
     var act = req.activity;
 
-    if (act && act.actor && act.actor.id == req.principal.id) {
+    if (act && act.actor && act.actor.id === req.principal.id) {
         next();
     } else {
         next(new HTTPError("Only the actor can modify this object.", 403));
@@ -274,7 +277,7 @@ var actorOrRecipient = function(req, res, next) {
     var act = req.activity,
         person = req.principal;
 
-    if (act && act.actor && person && act.actor.id == person.id) {
+    if (act && act.actor && person && act.actor.id === person.id) {
         next();
     } else {
         act.checkRecipient(person, function(err, isRecipient) {
@@ -304,7 +307,7 @@ var getObject = function(req, res, next) {
                 next(err);
             } else {
                 obj.sanitize();
-                res.json(obj);
+                maybeAS2(req, res, next, obj);
             }
         }
     );
@@ -319,7 +322,7 @@ var putObject = function(req, res, next) {
             actor: req.principal,
             generator: req.generator,
             verb: "update",
-            object: _(obj).extend(updates)
+            object: _(obj).extend(updates).value()
         });
 
     Step(
@@ -369,7 +372,6 @@ var deleteObject = function(req, res, next) {
 };
 
 var contextEndpoint = function(contextifier, streamCreator) {
-
     return function(req, res, next) {
 
         var args;
@@ -385,7 +387,7 @@ var contextEndpoint = function(contextifier, streamCreator) {
             if (err) {
                 next(err);
             } else {
-                res.json(collection);
+                maybeAS2(req, res, next, collection);
             }
         });
     };
@@ -439,7 +441,7 @@ var getUser = function(req, res, next) {
             if (!req.principal) {
                 // skip
                 this(null);
-            } else if (req.principal.id == req.user.profile.id) {
+            } else if (req.principal.id === req.user.profile.id) {
                 // same user
                 req.user.profile.pump_io = {
                     followed: false
@@ -453,12 +455,12 @@ var getUser = function(req, res, next) {
         function(err) {
             if (err) next(err);
             // If no user, or different user, hide email and settings
-            if (!req.principal || (req.principal.id != req.user.profile.id)) {
+            if (!req.principal || (req.principal.id !== req.user.profile.id)) {
                 delete req.user.email;
                 delete req.user.settings;
             }
             req.user.sanitize();
-            res.json(req.user);
+            maybeAS2(req, res, next, req.user);
         }
     );
 };
@@ -537,7 +539,7 @@ var getActivity = function(req, res, next) {
 
     act.sanitize(principal);
 
-    res.json(act);
+    maybeAS2(req, res, next, act);
 };
 
 var putActivity = function(req, res, next) {
@@ -579,7 +581,7 @@ var usersStream = function(callback) {
         },
         function(err, str) {
             if (err) {
-                if (err.name == "NoSuchThingError") {
+                if (err.name === "NoSuchThingError") {
                     Stream.create({name: "user:all"}, this);
                 } else {
                     throw err;
@@ -590,7 +592,7 @@ var usersStream = function(callback) {
         },
         function(err, str) {
             if (err) {
-                if (err.name == "AlreadyExistsError") {
+                if (err.name === "AlreadyExistsError") {
                     Stream.get("user:all", callback);
                 } else {
                     callback(err);
@@ -631,8 +633,7 @@ var createUser = function(req, res, next) {
                     res.render("welcome",
                                {page: {title: "Welcome"},
                                 profile: user.profile,
-                                service: svc,
-                                layout: false},
+                                service: svc},
                                this);
                 },
                 function(err, text) {
@@ -673,15 +674,13 @@ var createUser = function(req, res, next) {
                                {principal: user.profile,
                                 principalUser: user,
                                 confirmation: confirmation,
-                                confirmationURL: confirmationURL,
-                                layout: false},
+                                confirmationURL: confirmationURL},
                                this.parallel());
                     res.render("confirmation-email-text",
                                {principal: user.profile,
                                 principalUser: user,
                                 confirmation: confirmation,
-                                confirmationURL: confirmationURL,
-                                layout: false},
+                                confirmationURL: confirmationURL},
                                this.parallel());
                 },
                 function(err, html, text) {
@@ -739,12 +738,11 @@ var createUser = function(req, res, next) {
             next(new HTTPError("No email address", 400));
             return;
         } else {
-            try {
-                check(props.email).isEmail();
+            if (validator.isEmail(props.email)) {
                 email = props.email;
                 delete props.email;
-            } catch(e) {
-                next(new HTTPError(e.message, 400));
+            } else {
+                next(new HTTPError("Invalid email address provided", 400));
                 return;
             }
         }
@@ -761,7 +759,7 @@ var createUser = function(req, res, next) {
                     throw new HTTPError(err.message, 400);
                 } else if (err instanceof User.BadNicknameError) {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "AlreadyExistsError") {
+                } else if (err.name === "AlreadyExistsError") {
                     throw new HTTPError(err.message, 409); // conflict
                 } else {
                     throw err;
@@ -899,7 +897,7 @@ var listUsers = function(req, res, next) {
 
             _.each(users, function(user) {
                 user.sanitize();
-                if (!req.principal || req.principal.id != user.profile.id) {
+                if (!req.principal || req.principal.id !== user.profile.id) {
                     delete user.email;
                 }
             });
@@ -919,7 +917,7 @@ var listUsers = function(req, res, next) {
                 }
             }
 
-            res.json(collection);
+            maybeAS2(req, res, next, collection);
         }
     );
 };
@@ -929,7 +927,7 @@ var postActivity = function(req, res, next) {
     var props = Scrubber.scrubActivity(req.body),
         activity = new Activity(props),
         finishAndSend = function(profile, activity, callback) {
-            
+
             var dupe = new Activity(_.clone(activity));
 
             Step(
@@ -1025,7 +1023,7 @@ var ensureRemoteActivity = function(principal, props, retries, callback) {
             Activity.get(props.id, this);
         },
         function(err, activity) {
-            if (err && err.name == "NoSuchThingError") {
+            if (err && err.name === "NoSuchThingError") {
                 newRemoteActivity(principal, props, this);
             } else if (!err) {
                 this(null, activity);
@@ -1079,15 +1077,15 @@ var newRemoteActivity = function(principal, props, callback) {
         },
         function(err) {
             if (err) {
-                if (err.name == "AppError") {
+                if (err.name === "AppError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NoSuchThingError") {
+                } else if (err.name === "NoSuchThingError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "AlreadyExistsError") {
+                } else if (err.name === "AlreadyExistsError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NoSuchItemError") {
+                } else if (err.name === "NoSuchItemError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NotInStreamError") {
+                } else if (err.name === "NotInStreamError") {
                     throw new HTTPError(err.message, 400);
                 } else {
                     throw err;
@@ -1103,12 +1101,12 @@ var newRemoteActivity = function(principal, props, callback) {
 var validateActor = function(client, principal, actor) {
 
     if (client.webfinger) {
-        if (ActivityObject.canonicalID(actor.id) != ActivityObject.canonicalID(principal.id)) {
+        if (ActivityObject.canonicalID(actor.id) !== ActivityObject.canonicalID(principal.id)) {
             throw new HTTPError("Actor is invalid since " + actor.id + " is not " + principal.id, 400);
         }
     } else if (client.hostname) {
-        if (ActivityObject.canonicalID(actor.id) != "https://" + client.hostname + "/" &&
-            ActivityObject.canonicalID(actor.id) != "http://" + client.hostname + "/") {
+        if (ActivityObject.canonicalID(actor.id) !== "https://" + client.hostname + "/" &&
+            ActivityObject.canonicalID(actor.id) !== "http://" + client.hostname + "/") {
             throw new HTTPError("Actor is invalid since " + actor.id + " is not " + principal.id, 400);
         }
     }
@@ -1182,7 +1180,7 @@ var validateGroupRecipient = function(group, act) {
         }
     });
 
-    if (!_.some(recipients, function(item) { return item.id == group.id && item.objectType == group.objectType; })) {
+    if (!_.some(recipients, function(item) { return item.id === group.id && item.objectType === group.objectType; })) {
         throw new HTTPError("Group " + group.id + " is not a recipient of activity " + act.id, 400);
     }
 
@@ -1259,15 +1257,15 @@ var initActivity = function(activity, callback) {
         },
         function(err) {
             if (err) {
-                if (err.name == "AppError") {
+                if (err.name === "AppError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NoSuchThingError") {
+                } else if (err.name === "NoSuchThingError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "AlreadyExistsError") {
+                } else if (err.name === "AlreadyExistsError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NoSuchItemError") {
+                } else if (err.name === "NoSuchItemError") {
                     throw new HTTPError(err.message, 400);
-                } else if (err.name == "NotInStreamError") {
+                } else if (err.name === "NotInStreamError") {
                     throw new HTTPError(err.message, 400);
                 } else {
                     throw err;
@@ -1313,7 +1311,6 @@ var newActivity = function(activity, user, callback) {
 };
 
 var streamEndpoint = function(streamCreator) {
-
     return function(req, res, next) {
 
         var args;
@@ -1329,7 +1326,7 @@ var streamEndpoint = function(streamCreator) {
             if (err) {
                 next(err);
             } else {
-                res.json(collection);
+                maybeAS2(req, res, next, collection);
             }
         });
     };
@@ -1538,8 +1535,11 @@ var streamArgs = function(req, defaultCount, maxCount) {
         }
 
         if (_(req.query).has("count")) {
-            check(req.query.count, "Count must be between 0 and " + maxCount).isInt().min(0).max(maxCount);
-            args.count = sanitize(req.query.count).toInt();
+            if (!validator.isInt(req.query.count, {min: 0, max: maxCount})) {
+                throw new Error("Count must be between 0 and " + maxCount);
+            }else {
+                args.count = validator.toInt(req.query.count);
+            }
         } else {
             args.count = defaultCount;
         }
@@ -1548,16 +1548,22 @@ var streamArgs = function(req, defaultCount, maxCount) {
         // XXX: Check "before" and "since" for URI...?
 
         if (_(req.query).has("before")) {
-            check(req.query.before).notEmpty();
-            args.before = sanitize(req.query.before).trim();
+            if (validator.isEmpty(req.query.before)) {
+                throw new Error(req.query.before + " is null");
+            } else {
+                args.before = validator.trim(req.query.before);
+            }
         }
 
         if (_(req.query).has("since")) {
             if (_(args).has("before")) {
                 throw new Error("Can't have both 'before' and 'since' parameters");
             }
-            check(req.query.since).notEmpty();
-            args.since = sanitize(req.query.since).trim();
+            if (validator.isEmpty(req.query.since)) {
+                throw new Error(req.query.since + " is null");
+            }else {
+                args.since = validator.trim(req.query.since);
+            }
         }
 
         if (_(req.query).has("offset")) {
@@ -1567,8 +1573,11 @@ var streamArgs = function(req, defaultCount, maxCount) {
             if (_(args).has("since")) {
                 throw new Error("Can't have both 'since' and 'offset' parameters");
             }
-            check(req.query.offset, "Offset must be an integer greater than or equal to zero").isInt().min(0);
-            args.start = sanitize(req.query.offset).toInt();
+            if (!validator.isInt(req.query.offset, {min:0})) {
+                throw new Error("Offset must be an integer greater than or equal to zero");
+            }else {
+                args.start = validator.toInt(req.query.offset);
+            }
         }
 
         if (!_(req.query).has("offset") && !_(req.query).has("since") && !_(req.query).has("before")) {
@@ -1590,7 +1599,7 @@ var streamArgs = function(req, defaultCount, maxCount) {
 };
 
 var whoami = function(req, res, next) {
-    res.redirect("/api/user/"+req.principalUser.nickname+"/profile", 302);
+    res.redirect(302, URLMaker.makeURL("/api/user/"+req.principalUser.nickname+"/profile"));
 };
 
 var reqProxy = function(req, res, next) {
@@ -1616,7 +1625,6 @@ var reqProxy = function(req, res, next) {
 };
 
 var proxyRequest = function(req, res, next) {
-
     var principal = req.principal,
         proxy = req.proxy;
 
@@ -1657,7 +1665,7 @@ var proxyRequest = function(req, res, next) {
         function(err, pbody, pres) {
             var toCopy;
             if (err) {
-                if (err.statusCode == 304) {
+                if (err.statusCode === 304) {
                     res.statusCode = 304;
                     res.end();
                 } else {
@@ -1681,7 +1689,7 @@ var proxyRequest = function(req, res, next) {
                 }
                 // XXX: save to local cache
                 req.log.debug({headers: pres.headers}, "Received object");
-                res.send(pbody);
+                res.send(wantAS2(req) ? JSON.stringify(as2(JSON.parse(pbody))) : pbody);
             }
         }
     );
@@ -1728,3 +1736,4 @@ var finishObject = function(profile, obj, callback) {
 
 exports.addRoutes = addRoutes;
 exports.createUser = createUser;
+exports.profileStack = [anyReadAuth, reqUser, personType, getObject];

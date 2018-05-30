@@ -7,6 +7,7 @@
 // entry point activity pump application
 //
 // Copyright 2011-2012, E14N https://e14n.com/
+// Copyright 2017, AJ Jordan <alex@strugee.net>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,106 +21,185 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var cluster = require("cluster"),
     os = require("os"),
     fs = require("fs"),
     path = require("path"),
     Logger = require("bunyan"),
-    _ = require("underscore"),
-    argv = require("optimist")
-        .usage("Usage: $0 -c <configfile>")
-        .alias("c", "config")
-        .describe("c", "Configuration file (default: /etc/pump.io.json and ~/.pump.io.json)")
-        .argv,
+    _ = require("lodash"),
+    importFresh = require("import-fresh"),
+    configUtil = require("../lib/config"),
+    restartEpoch = require("../lib/zerodowntime"),
+    restartInflight = false,
+    abortedRestart = false,
+    restartedWorker = null,
+    argv = require("yargs")
+           .usage("Usage: $0 -c <configfile>")
+           .alias("c", "config")
+           // Hack to make sure that .config()'s callback gets run even if -c isn't specified
+           .default("c", "/dev/null", "/etc/pump.io.json and ~/.pump.io.json")
+           .config("c", "Configuration file", function findConfig(filename) {
+               var files,
+                   config = {},
+                   i,
+                   raw,
+                   parsed;
+
+               if (filename !== "/dev/null") {
+                   files = [filename];
+               } else {
+                   files = ["/etc/pump.io.json"];
+                   if (process.env.HOME) {
+                       files.push(path.join(process.env.HOME, ".pump.io.json"));
+                   }
+               }
+
+               // This is all sync
+               for (i = 0; i < files.length; i++) {
+                   try {
+                       raw = fs.readFileSync(files[i]);
+                   } catch (err) {
+                       continue;
+                   }
+
+                   try {
+                       parsed = JSON.parse(raw);
+                       _.extend(config, parsed);
+                   } catch (err) {
+                       console.error("Error parsing JSON configuration:", err.toString());
+                       console.error("Try using a JSON validator.");
+                       process.exit(1);
+                   }
+               }
+
+               return config;
+           })
+           .env("PUMPIO")
+           // TODO more validation of booleans, etc. here
+           .number(["port", "urlPort", "smtpport", "smtptimeout", "cleanupSession", "cleanupNonce"])
+           .alias("help", "h")
+           .help()
+           .alias("version", "v")
+           .version()
+           .argv,
     Dispatch = require("../lib/dispatch"),
     makeApp = require("../lib/app").makeApp;
 
-// We first get config files, then launch some cluster apps
+// We first get config files and launch some cluster apps
 
 var main = function() {
-    var config = getConfig(argv.c);
+    var config = argv;
     launchApps(config);
-};
-
-// Gets the configuration vars for this server from config files
-
-var getConfig = function(filename) {
-
-    var files,
-        config = {},
-        i,
-        raw,
-        parsed;
-
-    if (filename) {
-        files = [filename];
-    } else {
-        files = ['/etc/pump.io.json'];
-        if (process.env.HOME) {
-            files.push(path.join(process.env.HOME, ".pump.io.json"))
-        }
-    }   
-
-    // This is all sync
-    for (i = 0; i < files.length; i++) {
-        if (fs.existsSync(files[i])) {
-            raw = fs.readFileSync(files[i]);
-            try {
-                parsed = JSON.parse(raw);
-                _.extend(config, parsed);
-            } catch (err) {
-                console.log(err);
-                process.exit(1);
-            }
-        }
-    }
-
-    return config;
 };
 
 // Launch apps
 
-var launchApps = function(config) {
-    var cnt,
+var launchApps = function(configBase) {
+    var config = configUtil.buildConfig(configBase),
         i,
-        unclustered = ["memory", "disk", "leveldb"],
         log = setupLog(config),
         clusterLog = log.child({component: "cluster"});
 
-    if (_(config).has("children")) {
-        cnt = config.children;
-    } else if (_(config).has("driver") && unclustered.indexOf(config.driver) !== -1) {
-        cnt = 1;
-    } else {
-        cnt = Math.max(os.cpus().length - 1, 1);
-    }
-
-    // Useful for some processes in each worker
-    config.workers = cnt;
-
     if (cluster.isMaster) {
+
+        // We pass configBase because we want what the user originally gave
+        // The only reason we waited this long (and until after parsing) was to get a log
+        configUtil.validateConfig(configBase, log);
 
         Dispatch.start(log);
 
-        for (i = 0; i < cnt; i++) {
+        for (i = 0; i < config.workers; i++) {
             cluster.fork();
         }
 
         // Restart child processes when they die
 
-        cluster.on('exit', function(worker, code, signal) {
-            var exitCode = worker.process.exitCode;
-            clusterLog.warn('worker ' + worker.process.pid + ' died ('+exitCode+'). restarting...');
+        cluster.on("exit", function(worker, code, signal) {
+            // TODO remove this when we drop Node 4
+            var zeroDowntimeRestart = _.has(worker, "exitedAfterDisconnect") ? worker.exitedAfterDisconnect : worker.suicide,
+                exitCode = worker.process.exitCode;
+
+            // Don't respawn any workers if we aborted a restart
+            // Note that even for crashes it doesn't make sense to respawn since we _know_ all new workers will be bad
+            if (abortedRestart) {
+                clusterLog.error("worker " + worker.process.pid + " died ("+exitCode+") but refusing to restart due to aborted zero-downtime restart; please restart this process");
+                return;
+            }
+
+            // Check if a zero-downtime worker respawn went bad
+            if (worker.process.pid === restartedWorker) {
+                clusterLog.error("worker " + worker.process.pid + " died ("+exitCode+") directly after respawn for zero-downtime restart");
+                abortedRestart = true;
+                restartedWorker = null;
+            }
+
+            if (!zeroDowntimeRestart) {
+                clusterLog.error("worker " + worker.process.pid + " died ("+exitCode+"). restarting...");
+            }
+
             cluster.fork();
         });
 
+        // Perform zero-downtime restart on SIGUSR2
+        // TODO handle config changes
+        process.on("SIGUSR2", function() {
+            if (config.workers <= 1) {
+                clusterLog.warn("Received SIGUSR2 but ignoring because there aren't enough workers for zero-downtime restart");
+                return;
+            }
+
+            if (config.driver !== "mongodb") {
+                clusterLog.warn("Zero-downtime restarts are only supported on MongoDB for the time being");
+                return;
+            }
+
+            if (abortedRestart) {
+                clusterLog.warn("Received SIGUSR2 but refusing due to an earlier aborted restart; please restart this process");
+                return;
+            }
+
+            if (restartInflight) {
+                clusterLog.warn("Received SIGUSR2 but ignoring because there's already an in-flight zero-downtime restart");
+                return;
+            }
+
+            restartInflight = true;
+
+            clusterLog.info("Received SIGUSR2; starting zero-downtime restart...");
+
+            clusterLog.debug("Determining zero-downtime restart eligibility...");
+
+            var newEpoch = importFresh("../lib/zerodowntime");
+            if (newEpoch !== restartEpoch) {
+                clusterLog.warn("Refusing zero-downtime restart because the new version says it's incompatible with us.");
+                return;
+            }
+
+            var workers = [];
+            for (var id in cluster.workers) {
+                workers.push(cluster.workers[id]);
+            }
+
+            restartWorker(workers.pop(), workers, clusterLog, function() {
+                clusterLog.info("Zero-downtime restart complete");
+                restartInflight = false;
+            });
+        });
+
     } else {
-        makeApp(config, function(err, app) {
+
+        process.on("SIGUSR2", function() {
+            clusterLog.debug("Received SIGUSR2 but ignoring because we're in a worker process");
+        });
+
+        makeApp(config, function(err, appServer) {
             if (err) {
                 console.error(err);
                 process.exit(1);
             } else {
-                app.run(function(err) {
+                appServer.run(function(err) {
                     if (err) {
                         console.error(err);
                         process.exit(1);
@@ -128,6 +208,56 @@ var launchApps = function(config) {
             }
         });
     }
+};
+
+// Restart a worker and schedule the next restart
+
+var restartWorker = function(worker, workerQueue, log, cb) {
+    worker.send({cmd: "gracefulShutdown"});
+    log.debug("Killed " + worker.process.pid + " for zero-downtime restart.");
+
+    var timeout = setTimeout(function() {
+        log.warn("Killed " + worker.process.pid + " because it didn't shut down within 30 seconds.");
+        worker.kill();
+    }, 30 * 1000);
+
+    worker.once("exit", function() {
+        clearTimeout(timeout);
+    });
+
+    // TODO error handling?
+    cluster.once("fork", function(worker) {
+        log.debug("Respawned " + worker.process.pid + " with new code.");
+        restartedWorker = worker.process.pid;
+
+        // We don't use the 'listening' event and wait for
+        // explicit notification because 'listen' would fire when
+        // the main server was listening but not the bounce server
+        worker.once("message", function(obj) {
+            switch (obj.msg) {
+            case "listening":
+                if (workerQueue.length === 0) {
+                    cb();
+                    return;
+                }
+
+                restartWorker(workerQueue.pop(), workerQueue, log, cb);
+
+                restartedWorker = null;
+                break;
+            case "abortRestart":
+                log.warn(obj.err, "New worker signaled error; the master is in an inconsistent state and should be restarted ASAP");
+                abortedRestart = true;
+                break;
+            default:
+                // msg is an internal Bunyan field so we rename it
+                obj.workerMsg = obj.msg;
+                delete obj.msg;
+                log.error(obj, "Received unknown restart status message from worker");
+                throw new Error("Received unknown restart status message from worker: " + obj.workerMsg);
+            }
+        });
+    });
 };
 
 // Set up a Bunyan logger that the dispatch code can send to
@@ -146,6 +276,8 @@ var setupLog = function(config) {
     } else {
         logParams.streams = [{stream: process.stderr}];
     }
+
+    logParams.streams[0].level = config.logLevel;
 
     return new Logger(logParams);
 };

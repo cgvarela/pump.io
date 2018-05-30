@@ -16,11 +16,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     simplesmtp = require("simplesmtp"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     httputil = require("./lib/http"),
     emailutil = require("./lib/email"),
     Browser = require("zombie"),
@@ -29,8 +32,8 @@ var assert = require("assert"),
     newClient = oauthutil.newClient,
     register = oauthutil.register,
     registerEmail = oauthutil.registerEmail,
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig,
+    withAppSetup = apputil.withAppSetup,
+    setupAppConfig = apputil.setupAppConfig,
     oneEmail = emailutil.oneEmail,
     confirmEmail = emailutil.confirmEmail;
 
@@ -54,7 +57,7 @@ suite.addBatch({
                 smtp = simplesmtp.createServer({disableDNSValidation: true});
             Step(
                 function() {
-                    smtp.listen(1623, this); 
+                    smtp.listen(1623, this);
                 },
                 function(err) {
                     if (err) throw err;
@@ -98,7 +101,7 @@ suite.addBatch({
                 topic: function(cl, app, smtp) {
                     var callback = this.callback;
                     register(cl, "florida", "good*times", function(err, result, response) {
-                        if (err && err.statusCode == 400) {
+                        if (err && err.statusCode === 400) {
                             callback(null);
                         } else {
                             callback(new Error("Unexpected success"));
@@ -119,7 +122,7 @@ suite.addBatch({
                         },
                         callback
                     );
-                        
+
                 },
                 "it works correctly": function(err, message, user) {
                     assert.ifError(err);
@@ -129,7 +132,7 @@ suite.addBatch({
                 "the email is not included": function(err, message, user) {
                     assert.ifError(err);
                     assert.isObject(user);
-                    assert.isFalse(_.include(user, "email"));
+                    assert.isFalse(_.includes(user, "email"));
                 },
                 "and we confirm the email address": {
                     topic: function(message, user, cl) {
@@ -238,7 +241,7 @@ suite.addBatch({
                             assert.ifError(err);
                             assert.isObject(feed);
                             target = _.filter(feed.items, function(user) {
-                                return (user.nickname == "jj");
+                                return (user.nickname === "jj");
                             });
                             assert.lengthOf(target, 1);
                             assert.isObject(target[0]);
@@ -288,7 +291,7 @@ suite.addBatch({
                             assert.ifError(err);
                             assert.isObject(feed);
                             target = _.filter(feed.items, function(user) {
-                                return (user.nickname == "jj");
+                                return (user.nickname === "jj");
                             });
                             assert.lengthOf(target, 1);
                             assert.isObject(target[0]);
@@ -315,7 +318,7 @@ suite.addBatch({
                             assert.ifError(err);
                             assert.isObject(feed);
                             target = _.filter(feed.items, function(user) {
-                                return (user.nickname == "jj");
+                                return (user.nickname === "jj");
                             });
                             assert.lengthOf(target, 1);
                             assert.isObject(target[0]);
@@ -334,7 +337,7 @@ suite.addBatch({
                         },
                         callback
                     );
-                        
+
                 },
                 "it works correctly": function(err, message, user) {
                     assert.ifError(err);
@@ -344,7 +347,7 @@ suite.addBatch({
                 "the email is not included": function(err, message, user) {
                     assert.ifError(err);
                     assert.isObject(user);
-                    assert.isFalse(_.include(user, "email"));
+                    assert.isFalse(_.includes(user, "email"));
                 },
                 "and we fetch the user with user credentials without confirmation": {
                     topic: function(message, user, cl) {
@@ -361,7 +364,7 @@ suite.addBatch({
                                 httputil.getJSON("http://localhost:4815/api/user/bookman", cred, this);
                             },
                             function(err, body, resp) {
-                                if (err && err.statusCode && err.statusCode == 403) {
+                                if (err && err.statusCode && err.statusCode === 403) {
                                     callback(null);
                                 } else if (err) {
                                     callback(err);

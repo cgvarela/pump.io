@@ -16,24 +16,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
     http = require("http"),
     querystring = require("querystring"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     fs = require("fs"),
     path = require("path"),
     Person = require("../lib/model/person").Person,
     databank = require("databank"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     newCredentials = oauthutil.newCredentials,
     newClient = oauthutil.newClient,
     pj = httputil.postJSON,
     gj = httputil.getJSON,
     dialbackApp = require("./lib/dialback").dialbackApp,
-    setupAppConfig = oauthutil.setupAppConfig,
+    setupAppConfig = apputil.setupAppConfig,
     Databank = databank.Databank,
     DatabankObject = databank.DatabankObject,
     URLMaker = require("../lib/urlmaker").URLMaker;

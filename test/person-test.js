@@ -16,13 +16,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
     fs = require("fs"),
     path = require("path"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     schema = require("../lib/schema").schema,
     URLMaker = require("../lib/urlmaker").URLMaker,
     modelBatch = require("./lib/model").modelBatch,
@@ -100,7 +102,7 @@ suite.addBatch({
                 }
 
                 DatabankObject.bank = db;
-                
+
                 mod = require("../lib/model/person");
 
                 if (!mod) {

@@ -1,4 +1,4 @@
-// oauth-test.js
+// oauth-parallel-access-token-test.js
 //
 // Test the client registration API
 //
@@ -16,17 +16,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
-    Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     requestToken = oauthutil.requestToken,
     newClient = oauthutil.newClient,
     register = oauthutil.register,
@@ -38,19 +40,8 @@ var suite = vows.describe("OAuth parallel access tokens");
 
 // A batch to test lots of parallel access token requests
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get a lot of access tokens in parallel for a single client": {
             topic: function() {
                 var cb = this.callback,
@@ -96,7 +87,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

@@ -2,6 +2,9 @@
 //
 // OAuth authentication mechanism for the pump.io client UI
 //
+// @licstart  The following is the entire license notice for the
+//  JavaScript code in this page.
+//
 // Copyright 2011-2012, E14N https://e14n.com/
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +18,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// @licend  The above is the entire license notice
+// for the JavaScript code in this page.
 
 (function(_, $, Backbone, Pump) {
+
+    "use strict";
 
     Pump.principalUser = null; // XXX: load from server...?
 
@@ -30,7 +38,7 @@
     Pump.setNickname = function(userNickname) {
         Pump.nickname = userNickname;
         if (localStorage) {
-            localStorage['cred:nickname'] = userNickname;
+            localStorage["cred:nickname"] = userNickname;
         }
     };
 
@@ -38,7 +46,7 @@
         if (Pump.nickname) {
             return Pump.nickname;
         } else if (localStorage) {
-            return localStorage['cred:nickname'];
+            return localStorage["cred:nickname"];
         } else {
             return null;
         }
@@ -47,7 +55,7 @@
     Pump.clearNickname = function() {
         Pump.nickname = null;
         if (localStorage) {
-            delete localStorage['cred:nickname'];
+            delete localStorage["cred:nickname"];
         }
     };
 
@@ -55,8 +63,8 @@
         if (Pump.clientID) {
             return {clientID: Pump.clientID, clientSecret: Pump.clientSecret};
         } else if (localStorage) {
-            Pump.clientID = localStorage['cred:clientID'];
-            Pump.clientSecret = localStorage['cred:clientSecret'];
+            Pump.clientID = localStorage["cred:clientID"];
+            Pump.clientSecret = localStorage["cred:clientSecret"];
             if (Pump.clientID) {
                 return {clientID: Pump.clientID, clientSecret: Pump.clientSecret};
             } else {
@@ -71,8 +79,8 @@
         if (Pump.token) {
             return {token: Pump.token, secret: Pump.secret};
         } else if (localStorage) {
-            Pump.token = localStorage['cred:token'];
-            Pump.secret = localStorage['cred:secret'];
+            Pump.token = localStorage["cred:token"];
+            Pump.secret = localStorage["cred:secret"];
             if (Pump.token) {
                 return {token: Pump.token, secret: Pump.secret};
             } else {
@@ -87,8 +95,8 @@
         Pump.token = userToken;
         Pump.secret = userSecret;
         if (localStorage) {
-            localStorage['cred:token'] = userToken;
-            localStorage['cred:secret'] = userSecret;
+            localStorage["cred:token"] = userToken;
+            localStorage["cred:secret"] = userSecret;
         }
         return;
     };
@@ -97,18 +105,18 @@
         Pump.token  = null;
         Pump.secret = null;
         if (localStorage) {
-            delete localStorage['cred:token'];
-            delete localStorage['cred:secret'];
+            delete localStorage["cred:token"];
+            delete localStorage["cred:secret"];
         }
         return;
     };
 
     Pump.clearCred = function() {
-	Pump.clientID = null;
-	Pump.clientSecret = null;
-	if (localStorage) {
-            delete localStorage['cred:clientID'];
-            delete localStorage['cred:clientSecret'];
+        Pump.clientID = null;
+        Pump.clientSecret = null;
+        if (localStorage) {
+            delete localStorage["cred:clientID"];
+            delete localStorage["cred:clientSecret"];
         }
     };
 
@@ -134,8 +142,8 @@
                                       Pump.clientID = data.client_id;
                                       Pump.clientSecret = data.client_secret;
                                       if (localStorage) {
-                                          localStorage['cred:clientID'] = Pump.clientID;
-                                          localStorage['cred:clientSecret'] = Pump.clientSecret;
+                                          localStorage["cred:clientID"] = Pump.clientID;
+                                          localStorage["cred:clientSecret"] = Pump.clientSecret;
                                       }
                                       callback(null, {clientID: Pump.clientID,
                                                       clientSecret: Pump.clientSecret});

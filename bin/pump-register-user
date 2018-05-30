@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-
 // -*- mode: javascript -*-
 
-// registeruser.js
+// pump-register-user
 //
-// Register a new user with the activity pump
+// register a new user
+//
+// first call register-app, then use this tool
 //
 // Copyright 2011-2012, E14N https://e14n.com/
 //
@@ -20,7 +21,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     url = require("url"),
     Step = require("step"),
     common = require("../lib/pumpclient"),
@@ -29,7 +32,7 @@ var _ = require("underscore"),
     postJSON = common.postJSON,
     argv = require("optimist")
         .usage("Usage: $0 -u <nickname> -p <password>")
-        .demand(["u","p"])
+        .demand(["u", "p"])
         .alias("u", "username")
         .alias("p", "password")
         .alias("s", "server")
@@ -55,8 +58,8 @@ Step(
     function(err, cred) {
         if (err) throw err;
         var endpoint = url.format({
-            protocol: ((port == 443) ? "https" : "http"),
-            host: ((port == 80) ? server : server + ":" + port),
+            protocol: ((port === 443) ? "https" : "http"),
+            host: ((port === 80) ? server : server + ":" + port),
             pathname: "/api/users"
         });
         postJSON(endpoint, cred, user, this);

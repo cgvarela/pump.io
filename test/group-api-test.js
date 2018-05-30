@@ -16,21 +16,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     urlparse = require("url").parse,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
     pj = httputil.postJSON,
     gj = httputil.getJSON,
     validActivity = actutil.validActivity,
     validActivityObject = actutil.validActivityObject,
     validFeed = actutil.validFeed,
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     newCredentials = oauthutil.newCredentials,
     newClient = oauthutil.newClient,
     newPair = oauthutil.newPair;
@@ -43,25 +46,14 @@ var makeCred = function(cl, pair) {
         consumer_secret: cl.client_secret,
         token: pair.token,
         token_secret: pair.token_secret,
-	user: pair.user
+        user: pair.user
     };
 };
 
 // A batch for manipulating groups API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we make a new user": {
             topic: function() {
                 newCredentials("fafhrd", "lankhmar+1", this.callback);
@@ -112,14 +104,14 @@ suite.addBatch({
                         assert.ifError(err);
                         assert.isObject(group);
                         assert.include(group, "members");
-			validFeed(group.members);
+                        validFeed(group.members);
                     },
                     "it has a documents feed": function(err, group) {
                         assert.ifError(err);
                         assert.isObject(group);
                         assert.include(group, "documents");
-			validFeed(group.documents);
-		    },
+                        validFeed(group.documents);
+                    },
                     "it has an inbox feed": function(err, group) {
                         assert.ifError(err);
                         assert.isObject(group);
@@ -265,11 +257,11 @@ suite.addBatch({
                     assert.ifError(err);
                     validActivity(data);
                 },
-		"and the creator checks the member feed": {
-		    topic: function(joinAct, memberCred, createAct, creatorCred) {
+                "and the creator checks the member feed": {
+                    topic: function(joinAct, memberCred, createAct, creatorCred) {
                         var callback = this.callback,
                             url = joinAct.object.members.url,
-			    cred = creatorCred;
+                            cred = creatorCred;
 
                         gj(url, cred, function(err, data, resp) {
                             callback(err, data, joinAct.actor);
@@ -287,7 +279,7 @@ suite.addBatch({
                         assert.equal(feed.items[0].id, joiner.id);
                     },
                     "and the member leaves the group": {
-		        topic: function(feed, joiner, joinAct, memberCred, createAct, creatorCred) {
+                        topic: function(feed, joiner, joinAct, memberCred, createAct, creatorCred) {
                             var callback = this.callback,
                                 url = "http://localhost:4815/api/user/ningauble/feed",
                                 cred = memberCred,
@@ -318,11 +310,11 @@ suite.addBatch({
                             validActivity(data);
                         },
                         "and the creator checks the member feed": {
-		            topic: function(leaveAct, feed, joiner, joinAct, memberCred, createAct, creatorCred) {
+                            topic: function(leaveAct, feed, joiner, joinAct, memberCred, createAct, creatorCred) {
 
                                 var callback = this.callback,
                                     url = createAct.object.members.url,
-			            cred = creatorCred;
+                                    cred = creatorCred;
 
                                 gj(url, cred, function(err, data, resp) {
                                     callback(err, data);
@@ -339,7 +331,7 @@ suite.addBatch({
                             }
                         }
                     }
-		}
+                }
             }
         },
         "and two users join a group": {
@@ -458,7 +450,7 @@ suite.addBatch({
                             assert.greater(feed.totalItems, 0);
                             assert.isArray(feed.items);
                             assert.greater(feed.items.length, 0);
-                            item = _.find(feed.items, function(item) { return item.id == act.id; });
+                            item = _.find(feed.items, function(item) { return item.id === act.id; });
                             assert.isObject(item);
                         }
                     },
@@ -482,7 +474,7 @@ suite.addBatch({
                             assert.greater(feed.totalItems, 0);
                             assert.isArray(feed.items);
                             assert.greater(feed.items.length, 0);
-                            item = _.find(feed.items, function(item) { return item.id == act.id; });
+                            item = _.find(feed.items, function(item) { return item.id === act.id; });
                             assert.isObject(item);
                         }
                     }
@@ -575,109 +567,113 @@ suite.addBatch({
         },
         "and we make some users": {
             topic: function() {
-		var callback = this.callback,
-		    cl;
+                var callback = this.callback,
+                cl;
 
                 Step(
-		    function() {
-			newClient(this);
-		    },
-		    function(err, results) {
-			var group = this.group(), i;
-			cl = results;
-			for (i = 0; i < 7; i++) {
+                    function() {
+                        newClient(this);
+                    },
+                    function(err, results) {
+                        var group = this.group(),
+                            i;
+
+                        cl = results;
+                        for (i = 0; i < 7; i++) {
                             newPair(cl, "priest"+i, "dark*watcher*"+i, group());
-			}
+                        }
                     },
                     function(err, pairs) {
                         if (err) {
-			    callback(err, null);
-			} else {
-			    callback(null, _.map(pairs, function(pair) { return makeCred(cl, pair); }));
-			}
+                            callback(err, null);
+                        } else {
+                            callback(null, _.map(pairs, function(pair) { return makeCred(cl, pair); }));
+                        }
                     }
                 );
             },
             "it works": function(err, creds) {
                 assert.ifError(err);
-		assert.isArray(creds);
+                assert.isArray(creds);
             },
-	    "and they all join a group": {
-		topic: function(creds) {
-		    var callback = this.callback,
-			priests = _.map(creds, function(cred) { return cred.user.profile; }),
-			group;
+            "and they all join a group": {
+                topic: function(creds) {
+                    var callback = this.callback,
+                    priests = _.map(creds, function(cred) { return cred.user.profile; }),
+                    group;
 
-		    Step(
-			function() {
-			    var url = "http://localhost:4815/api/user/priest0/feed",
-				act = {
-				    verb: "create",
-				    to: priests,
-				    object: {
-					objectType: "group",
-					displayName: "Black Priests",
-					summary: "Defenders of truth and justice"
-				    }
-				};
-			    pj(url, creds[0], act, this);
-			},
-			function(err, act) {
-			    var gr = this.group();
-			    if (err) throw err;
-			    group = act.object;
-			    _.times(7, function(i) {
-				var url = "http://localhost:4815/api/user/priest"+i+"/feed",
-				    act = {
-					verb: "join",
-					object: group
-				    };
+                    Step(
+                        function() {
+                            var url = "http://localhost:4815/api/user/priest0/feed",
+                            act = {
+                                verb: "create",
+                                to: priests,
+                                object: {
+                                    objectType: "group",
+                                    displayName: "Black Priests",
+                                    summary: "Defenders of truth and justice"
+                                }
+                            };
 
-				pj(url, creds[i], act, gr());
-			    });
-			},
-			function(err, joins) {
-			    if (err) {
-				callback(err, null);
-			    } else {
-				callback(err, group);
-			    }
-			}
-		    );
-		},
-		"it works": function(err, group) {
-		    assert.ifError(err);
-		    validActivityObject(group);
-		},
-		"and the creator adds a document": {
-		    topic: function(group, creds) {
-			var callback = this.callback,
-			    url = "http://localhost:4815/api/user/priest0/feed",
-			    act = {
-				verb: "post",
-				object: {
-				    id: "http://photo.example/priest0/photos/the-whole-gang",
-				    objectType: "image",
-				    displayName: "Group photo",
-				    url: "http://photo.example/priest0/photos/the-whole-gang.jpg"
-				},
-				target: group
-			    };
+                            pj(url, creds[0], act, this);
+                        },
+                        function(err, act) {
+                            var gr = this.group();
 
-			Step(
-			    function() {
-				pj(url, creds[0], act, this);
-			    },
-			    function(err, body) {
-				callback(err);
-			    }
-			);
-		    },
-		    "it works": function(err) {
-			assert.ifError(err);
-		    },
-		    "and the creator reads the document feed": {
-			topic: function(group, creds) {
+                            if (err) throw err;
+                            group = act.object;
+                            _.times(7, function(i) {
+                                var url = "http://localhost:4815/api/user/priest"+i+"/feed",
+                                    act = {
+                                        verb: "join",
+                                        object: group
+                                    };
+
+                                pj(url, creds[i], act, gr());
+                            });
+                        },
+                        function(err, joins) {
+                            if (err) {
+                                callback(err, null);
+                            } else {
+                                callback(err, group);
+                            }
+                        }
+                    );
+                },
+                "it works": function(err, group) {
+                    assert.ifError(err);
+                    validActivityObject(group);
+                },
+                "and the creator adds a document": {
+                    topic: function(group, creds) {
+                        var callback = this.callback,
+                            url = "http://localhost:4815/api/user/priest0/feed",
+                            act = {
+                                verb: "post",
+                                object: {
+                                    id: "http://photo.example/priest0/photos/the-whole-gang",
+                                    objectType: "image",
+                                    displayName: "Group photo",
+                                    url: "http://photo.example/priest0/photos/the-whole-gang.jpg"
+                                },
+                                target: group
+                            };
+
+                        Step(
+                            function() {
+                                pj(url, creds[0], act, this);
+                            },
+                            function(err, body) {
+                                callback(err);
+                            }
+                        );
+                    },
+                    "it works": function(err) {
+                        assert.ifError(err);
+                    },
+                    "and the creator reads the document feed": {
+                        topic: function(group, creds) {
                             var callback = this.callback,
                                 url = group.documents.url;
 
@@ -692,13 +688,15 @@ suite.addBatch({
                         "it has the added object": function(err, feed) {
                             assert.ifError(err);
                             assert.isTrue(feed.totalItems > 0);
-			    assert.isArray(feed.items);
+                            assert.isArray(feed.items);
                             assert.isTrue(feed.items.length > 0);
-			    assert.isObject(_.find(feed.items, function(item) { return item.url == "http://photo.example/priest0/photos/the-whole-gang.jpg"; }));
+                            assert.isObject(_.find(feed.items, function(item) {
+                                return item.url === "http://photo.example/priest0/photos/the-whole-gang.jpg";
+                            }));
                         }
-		    },
-		    "and another member reads the document feed": {
-			topic: function(group, creds) {
+                    },
+                    "and another member reads the document feed": {
+                        topic: function(group, creds) {
                             var callback = this.callback,
                                 url = group.documents.url;
 
@@ -713,41 +711,43 @@ suite.addBatch({
                         "it has the added object": function(err, feed) {
                             assert.ifError(err);
                             assert.isTrue(feed.totalItems > 0);
-			    assert.isArray(feed.items);
+                            assert.isArray(feed.items);
                             assert.isTrue(feed.items.length > 0);
-			    assert.isObject(_.find(feed.items, function(item) { return item.url == "http://photo.example/priest0/photos/the-whole-gang.jpg"; }));
+                            assert.isObject(_.find(feed.items, function(item) {
+                                return item.url === "http://photo.example/priest0/photos/the-whole-gang.jpg";
+                            }));
                         }
-		    }
-		},
-		"and another member adds a document": {
-		    topic: function(group, creds) {
-			var callback = this.callback,
-			    url = "http://localhost:4815/api/user/priest1/feed",
-			    act = {
-				verb: "post",
-				object: {
-				    id: "http://docs.example/priest1/files/action-plan",
-				    objectType: "file",
-				    displayName: "Action Plan",
-				    url: "http://docs.example/priest1/files/action-plan.docx"
-				},
-				target: group
-			    };
+                    }
+                },
+                "and another member adds a document": {
+                    topic: function(group, creds) {
+                        var callback = this.callback,
+                            url = "http://localhost:4815/api/user/priest1/feed",
+                            act = {
+                                verb: "post",
+                                object: {
+                                    id: "http://docs.example/priest1/files/action-plan",
+                                    objectType: "file",
+                                    displayName: "Action Plan",
+                                    url: "http://docs.example/priest1/files/action-plan.docx"
+                                },
+                                target: group
+                            };
 
-			Step(
-			    function() {
-				pj(url, creds[1], act, this);
-			    },
-			    function(err, body) {
-				callback(err);
-			    }
-			);
-		    },
-		    "it works": function(err) {
-			assert.ifError(err);
-		    },
-		    "and the creator reads the document feed": {
-			topic: function(group, creds) {
+                        Step(
+                            function() {
+                                pj(url, creds[1], act, this);
+                            },
+                            function(err, body) {
+                                callback(err);
+                            }
+                        );
+                    },
+                    "it works": function(err) {
+                        assert.ifError(err);
+                    },
+                    "and the creator reads the document feed": {
+                        topic: function(group, creds) {
                             var callback = this.callback,
                                 url = group.documents.url;
 
@@ -762,13 +762,15 @@ suite.addBatch({
                         "it has the added object": function(err, feed) {
                             assert.ifError(err);
                             assert.isTrue(feed.totalItems > 0);
-			    assert.isArray(feed.items);
+                            assert.isArray(feed.items);
                             assert.isTrue(feed.items.length > 0);
-			    assert.isObject(_.find(feed.items, function(item) { return item.url == "http://docs.example/priest1/files/action-plan.docx"; }));
+                            assert.isObject(_.find(feed.items, function(item) {
+                                return item.url === "http://docs.example/priest1/files/action-plan.docx";
+                            }));
                         }
-		    },
-		    "and another member reads the document feed": {
-			topic: function(group, creds) {
+                    },
+                    "and another member reads the document feed": {
+                        topic: function(group, creds) {
                             var callback = this.callback,
                                 url = group.documents.url;
 
@@ -783,149 +785,154 @@ suite.addBatch({
                         "it has the added object": function(err, feed) {
                             assert.ifError(err);
                             assert.isTrue(feed.totalItems > 0);
-			    assert.isArray(feed.items);
+                            assert.isArray(feed.items);
                             assert.isTrue(feed.items.length > 0);
-			    assert.isObject(_.find(feed.items, function(item) { return item.url == "http://docs.example/priest1/files/action-plan.docx"; }));
+                            assert.isObject(_.find(feed.items, function(item) {
+                                return item.url === "http://docs.example/priest1/files/action-plan.docx";
+                            }));
                         }
-		    }
-		},
-		"and a non-member tries to read the document feed": {
-		    topic: function(group, creds) {
+                    }
+                },
+                "and a non-member tries to read the document feed": {
+                    topic: function(group, creds) {
                         var callback = this.callback,
                             url = group.documents.url;
 
-			Step(
-			    function() {
-				newCredentials("theduke", "total*sadist", this);
-			    },
-			    function(err, cred) {
-				if (err) throw err;
-				gj(url, cred, this);
-			    },
-			    function(err, body, response) {
-				if (err && err.statusCode == 403) {
-				    callback(null);
-				} else if (err) {
-				    callback(err);
-				} else {
-				    callback(new Error("Unexpected success!"));
-				}
-			    }
-			);
+                        Step(
+                            function() {
+                                newCredentials("theduke", "total*sadist", this);
+                            },
+                            function(err, cred) {
+                                if (err) throw err;
+                                gj(url, cred, this);
+                            },
+                            function(err, body, response) {
+                                if (err && err.statusCode === 403) {
+                                    callback(null);
+                                } else if (err) {
+                                    callback(err);
+                                } else {
+                                    callback(new Error("Unexpected success!"));
+                                }
+                            }
+                        );
                     },
-		    "it fails correctly": function(err) {
-			assert.ifError(err);
-		    }
-		},
-		"and a non-member tries to add a document": {
-		    topic: function(group, creds) {
+                    "it fails correctly": function(err) {
+                        assert.ifError(err);
+                    }
+                },
+                "and a non-member tries to add a document": {
+                    topic: function(group, creds) {
                         var callback = this.callback,
                             url = group.documents.url;
 
-			Step(
-			    function() {
-				newCredentials("ohmphal", "a*thief's*skull", this);
-			    },
-			    function(err, cred) {
-				var url, act;
-				if (err) throw err;
-				url = "http://localhost:4815/api/user/ohmphal/feed";
-				act = {
-				    verb: "post",
-				    object: {
-					id: "urn:uuid:5245d4e2-60b1-42b8-b24d-032e92a86ac7",
-					objectType: "audio",
-					displayName: "Scary moan",
-					url: "http://sound.example/ohmphal/scary-moan.flac"
-				    },
-				    target: group
-				};
-				pj(url, cred, act, this);
-			    },
-			    function(err, body, response) {
-				if (err && err.statusCode == 400) {
-				    callback(null);
-				} else if (err) {
-				    callback(err);
-				} else {
-				    callback(new Error("Unexpected success!"));
-				}
-			    }
-			);
+                        Step(
+                            function() {
+                                newCredentials("ohmphal", "a*thief's*skull", this);
+                            },
+                            function(err, cred) {
+                                var url, act;
+
+                                if (err) throw err;
+                                url = "http://localhost:4815/api/user/ohmphal/feed";
+                                act = {
+                                    verb: "post",
+                                    object: {
+                                        id: "urn:uuid:5245d4e2-60b1-42b8-b24d-032e92a86ac7",
+                                        objectType: "audio",
+                                        displayName: "Scary moan",
+                                        url: "http://sound.example/ohmphal/scary-moan.flac"
+                                    },
+                                    target: group
+                                };
+                                pj(url, cred, act, this);
+                            },
+                            function(err, body, response) {
+                                if (err && err.statusCode === 400) {
+                                    callback(null);
+                                } else if (err) {
+                                    callback(err);
+                                } else {
+                                    callback(new Error("Unexpected success!"));
+                                }
+                            }
+                        );
                     },
-		    "it fails correctly": function(err) {
-			assert.ifError(err);
-		    }
-		},
-		"and a non-member tries to read the members feed": {
-		    topic: function(group, creds) {
+                    "it fails correctly": function(err) {
+                        assert.ifError(err);
+                    }
+                },
+                "and a non-member tries to read the members feed": {
+                    topic: function(group, creds) {
                         var callback = this.callback,
                             url = group.members.url;
 
-			Step(
-			    function() {
-				newCredentials("atya", "scraw*scraw", this);
-			    },
-			    function(err, cred) {
-				if (err) throw err;
-				gj(url, cred, this);
-			    },
-			    function(err, body, response) {
-				if (err && err.statusCode == 403) {
-				    callback(null);
-				} else if (err) {
-				    callback(err);
-				} else {
-				    callback(new Error("Unexpected success!"));
-				}
-			    }
-			);
+                        Step(
+                            function() {
+                                newCredentials("atya", "scraw*scraw", this);
+                            },
+                            function(err, cred) {
+                                if (err) throw err;
+                                gj(url, cred, this);
+                            },
+                            function(err, body, response) {
+                                if (err && err.statusCode === 403) {
+                                    callback(null);
+                                } else if (err) {
+                                    callback(err);
+                                } else {
+                                    callback(new Error("Unexpected success!"));
+                                }
+                            }
+                        );
                     },
-		    "it fails correctly": function(err) {
-			assert.ifError(err);
-		    }
-		},
-		"and a member adds and removes a document": {
-		    topic: function(group, creds) {
-			var callback = this.callback,
-			    url = "http://localhost:4815/api/user/priest2/feed";
+                    "it fails correctly": function(err) {
+                        assert.ifError(err);
+                    }
+                },
+                "and a member adds and removes a document": {
+                    topic: function(group, creds) {
+                        var callback = this.callback,
+                            url = "http://localhost:4815/api/user/priest2/feed";
 
-			Step(
-			    function() {
-				var act = {
-				    verb: "post",
-				    object: {
-					id: "http://photo.example/priest2/photos/my-vacation-2006",
-					objectType: "image",
-					displayName: "Vacation photo",
-					url: "http://photo.example/priest2/photos/my-vacation-2006.jpg"
-				    },
-				    target: group
-				};
-				pj(url, creds[2], act, this);
-			    },
-			    function(err, posted) {
-				if (err) throw err;
-				var act = {
-				    verb: "remove",
-				    object: {
-					id: "http://photo.example/priest2/photos/my-vacation-2006",
-					objectType: "image"
-				    },
-				    target: group
-				};
-				pj(url, creds[2], act, this);
-			    },
-			    function(err, body) {
-				callback(err);
-			    }
-			);
-		    },
-		    "it works": function(err) {
-			assert.ifError(err);
-		    },
-		    "and the poster checks the documents feed": {
-			topic: function(group, creds) {
+                        Step(
+                            function() {
+                                var act = {
+                                    verb: "post",
+                                    object: {
+                                        id: "http://photo.example/priest2/photos/my-vacation-2006",
+                                        objectType: "image",
+                                        displayName: "Vacation photo",
+                                        url: "http://photo.example/priest2/photos/my-vacation-2006.jpg"
+                                    },
+                                    target: group
+                                };
+
+                                pj(url, creds[2], act, this);
+                            },
+                            function(err, posted) {
+                                if (err) throw err;
+                                var act = {
+                                    verb: "remove",
+                                    object: {
+                                        id: "http://photo.example/priest2/photos/my-vacation-2006",
+                                        objectType: "image"
+                                    },
+                                    target: group
+                                };
+
+                                pj(url, creds[2], act, this);
+                            },
+                            function(err, body) {
+                                callback(err);
+                            }
+                        );
+                    },
+                    "it works": function(err) {
+                        assert.ifError(err);
+                    },
+                    "and the poster checks the documents feed": {
+                        topic: function(group, creds) {
                             var callback = this.callback,
                                 url = group.documents.url;
 
@@ -939,14 +946,16 @@ suite.addBatch({
                         },
                         "it does not have the object": function(err, feed) {
                             assert.ifError(err);
-			    assert.isArray(feed.items);
-			    assert.isUndefined(_.find(feed.items, function(item) { return item.id == "http://photo.example/priest2/photos/my-vacation-2006"; }));
+                            assert.isArray(feed.items);
+                            assert.isUndefined(_.find(feed.items, function(item) {
+                                return item.id === "http://photo.example/priest2/photos/my-vacation-2006";
+                            }));
                         }
-		    }
-		}
-	    }
-	}
-    }
-});
+                    }
+                }
+            }
+        }
+    })
+);
 
 suite["export"](module);

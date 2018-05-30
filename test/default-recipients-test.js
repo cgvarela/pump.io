@@ -16,14 +16,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     OAuth = require("oauth-evanp").OAuth,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newPair = oauthutil.newPair,
     newClient = oauthutil.newClient;
@@ -54,19 +57,8 @@ var clientCred = function(cl) {
 
 // A batch for testing the visibility of bcc and bto addressing
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we register a client": {
             topic: function() {
                 newClient(this.callback);
@@ -218,7 +210,7 @@ suite.addBatch({
                             newPair(cl, "elaine", "bo0merang", this);
                         },
                         function(err, pair) {
-                            var act; 
+                            var act;
                             if (err) throw err;
                             cred = makeCred(cl, pair);
                             act = {
@@ -282,7 +274,7 @@ suite.addBatch({
                             newPair(cl, "tuesday", "i*have*feelings", this);
                         },
                         function(err, pair) {
-                            var act; 
+                            var act;
                             if (err) throw err;
                             cred = makeCred(cl, pair);
                             act = {
@@ -337,7 +329,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

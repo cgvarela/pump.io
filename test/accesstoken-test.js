@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
@@ -63,7 +65,7 @@ mb["When we require the accesstoken module"]
       assert.isString(created.token_secret);
       assert.isString(created.created);
       assert.isString(created.updated);
-};
+  };
 
 suite.addBatch(mb);
 

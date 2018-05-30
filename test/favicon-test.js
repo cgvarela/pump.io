@@ -16,16 +16,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     Browser = require("zombie"),
     Step = require("step"),
     http = require("http"),
     fs = require("fs"),
     path = require("path"),
-    setupApp = oauthutil.setupApp,
-    setupAppConfig = oauthutil.setupAppConfig,
+    withAppSetup = apputil.withAppSetup,
+    setupAppConfig = apputil.setupAppConfig,
     newCredentials = oauthutil.newCredentials;
 
 var suite = vows.describe("favicon.ico test");
@@ -33,16 +36,16 @@ var suite = vows.describe("favicon.ico test");
 var httpGet = function(url, callback) {
     http.get(url, function(res) {
         var data = new Buffer( 0 );
-        res.on('data', function(chunk) {
+        res.on("data", function(chunk) {
             data = Buffer.concat([data, chunk]);
         });
-        res.on('error', function(err) {
+        res.on("error", function(err) {
             callback(err, null, null);
         });
-        res.on('end', function() {
+        res.on("end", function() {
             callback(null, data, res);
         });
-    }).on('error', function(err) {
+    }).on("error", function(err) {
         callback(err, null, null);
     });
 };
@@ -81,7 +84,7 @@ suite.addBatch({
             "and we get our default favicon": {
                 topic: function(body) {
                     var callback = this.callback;
-                    
+
                     fs.readFile(path.resolve(__dirname, "../public/images/favicon.ico"), function(err, data) {
                         if (err) {
                             callback(err, null, null);
@@ -146,7 +149,7 @@ suite.addBatch({
             "and we get our configured favicon": {
                 topic: function(body) {
                     var callback = this.callback;
-                    
+
                     fs.readFile(path.resolve(__dirname, "data/all-black-favicon.ico"), function(err, data) {
                         if (err) {
                             callback(err, null, null);

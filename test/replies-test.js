@@ -16,10 +16,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     databank = require("databank"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Step = require("step"),
     fs = require("fs"),
     path = require("path"),
@@ -34,7 +36,7 @@ var tc = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json")));
 
 suite.addBatch({
     "When we initialize the environment": {
-        topic: function() { 
+        topic: function() {
 
             var cb = this.callback;
             // Need this to make IDs
@@ -90,7 +92,7 @@ suite.addBatch({
                     note = null,
                     Comment = require("../lib/model/comment").Comment,
                     cb = this.callback;
-                
+
                 Step(
                     function() {
                         Note.create({content: "Testing testing 123."}, this);
@@ -139,7 +141,7 @@ suite.addBatch({
                     note = null,
                     Comment = require("../lib/model/comment").Comment,
                     cb = this.callback;
-                
+
                 Step(
                     function() {
                         Note.create({content: "Another test note."}, this);
@@ -188,7 +190,7 @@ suite.addBatch({
                     Comment = require("../lib/model/comment").Comment,
                     cb = this.callback,
                     comment1 = null;
-                
+
                 Step(
                     function() {
                         Note.create({content: "Test again."}, this);
@@ -229,7 +231,7 @@ suite.addBatch({
                     assert.isArray(list);
                     assert.lengthOf(list, 1);
                     assert.equal(list[0].id, comment1.id);
-                    assert.include(list[0], 'replies');
+                    assert.include(list[0], "replies");
                 }
             }
         },
@@ -240,7 +242,7 @@ suite.addBatch({
                     Comment = require("../lib/model/comment").Comment,
                     cb = this.callback,
                     comments = null;
-                
+
                 Step(
                     function() {
                         Note.create({content: "More testing."}, this);
@@ -297,7 +299,7 @@ suite.addBatch({
                 var Note = require("../lib/model/note").Note,
                     note = null,
                     cb = this.callback;
-                
+
                 Step(
                     function() {
                         Note.create({content: "Blow face."}, this);
@@ -337,7 +339,7 @@ suite.addBatch({
                     Comment = require("../lib/model/comment").Comment,
                     cb = this.callback,
                     comment = null;
-                
+
                 Step(
                     function() {
                         Note.create({content: "Test your face."}, this);

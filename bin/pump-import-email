@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 // -*- mode: javascript -*-
-
-// import an activitystreams JSON collection
+//
+// pump-import-email
+//
+// set the email of the user from a file
 //
 // Copyright 2013, E14N https://e14n.com/
 //
@@ -18,11 +20,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var fs = require("fs"),
     path = require("path"),
     urlparse = require("url").parse,
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     Logger = require("bunyan"),
     Queue = require("jankyqueue"),
     databank = require("databank"),
@@ -105,9 +109,9 @@ var getConfig = function(filename) {
     if (filename) {
         files = [filename];
     } else {
-        files = ['/etc/pump.io.json',
+        files = ["/etc/pump.io.json",
                  path.join(process.env.HOME, ".pump.io.json")];
-    }   
+    }
 
     // This is all sync
     for (i = 0; i < files.length; i++) {

@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newPair = oauthutil.newPair,
     newCredentials = oauthutil.newCredentials;
@@ -94,19 +97,8 @@ var emptyFeed = function(endpoint) {
 
 // Test some "bad" kinds of activity
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get new credentials": {
             topic: function(app) {
                 newCredentials("diego", "to*the*rescue", this.callback);
@@ -190,7 +182,7 @@ suite.addBatch({
                                 cb(err);
                             } else {
                                 nuke = _(cred).clone();
-                                _(nuke).extend(pair);
+                                _(nuke).extend(pair).value();
 
                                 httputil.postJSON("http://localhost:4815/api/user/diego/feed", nuke, act, function(err, feed, result) {
                                     if (err) {
@@ -234,7 +226,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

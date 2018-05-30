@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     querystring = require("querystring"),
     http = require("http"),
     OAuth = require("oauth-evanp").OAuth,
     Browser = require("zombie"),
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
-    setupApp = oauthutil.setupApp,
+    apputil = require("./lib/app"),
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newCredentials = oauthutil.newCredentials;
 
@@ -93,19 +96,8 @@ var emptyFeed = function(endpoint) {
 
 // A batch for testing the read access to the API
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get new credentials": {
             topic: function() {
                 newCredentials("bigredchicken", "bokbokbok!", this.callback);
@@ -118,41 +110,41 @@ suite.addBatch({
                 assert.isString(cred.token);
                 assert.isString(cred.token_secret);
             },
-            "and we check the feed endpoint": 
+            "and we check the feed endpoint":
             httputil.endpoint("/api/user/bigredchicken/feed", ["GET", "POST"]),
-            "and we check the minor feed endpoint": 
+            "and we check the minor feed endpoint":
             httputil.endpoint("/api/user/bigredchicken/feed/minor", ["GET"]),
-            "and we check the major feed endpoint": 
+            "and we check the major feed endpoint":
             httputil.endpoint("/api/user/bigredchicken/feed/major", ["GET"]),
-            "and we check the inbox endpoint": 
+            "and we check the inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox", ["GET", "POST"]),
-            "and we check the minor inbox endpoint": 
+            "and we check the minor inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox/minor", ["GET"]),
-            "and we check the major inbox endpoint": 
+            "and we check the major inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox/major", ["GET"]),
-            "and we check the direct inbox endpoint": 
+            "and we check the direct inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox/direct", ["GET"]),
-            "and we check the direct minor inbox endpoint": 
+            "and we check the direct minor inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox/direct/minor", ["GET"]),
-            "and we check the direct major inbox endpoint": 
+            "and we check the direct major inbox endpoint":
             httputil.endpoint("/api/user/bigredchicken/inbox/direct/major", ["GET"]),
-            "and we get the feed of a new user": 
+            "and we get the feed of a new user":
             sizeFeed("/api/user/bigredchicken/feed", 5),
-            "and we get the minor feed of a new user": 
+            "and we get the minor feed of a new user":
             sizeFeed("/api/user/bigredchicken/feed/minor", 5),
-            "and we get the major feed of a new user": 
+            "and we get the major feed of a new user":
             emptyFeed("/api/user/bigredchicken/feed/major"),
-            "and we get the inbox of a new user": 
+            "and we get the inbox of a new user":
             sizeFeed("/api/user/bigredchicken/inbox", 6),
-            "and we get the minor inbox of a new user": 
+            "and we get the minor inbox of a new user":
             sizeFeed("/api/user/bigredchicken/inbox/minor", 5),
-            "and we get the major inbox of a new user": 
+            "and we get the major inbox of a new user":
             sizeFeed("/api/user/bigredchicken/inbox/major", 1),
-            "and we get the direct inbox of a new user": 
+            "and we get the direct inbox of a new user":
             sizeFeed("/api/user/bigredchicken/inbox/direct", 1),
-            "and we get the direct minor inbox of a new user": 
+            "and we get the direct minor inbox of a new user":
             emptyFeed("/api/user/bigredchicken/inbox/direct/minor"),
-            "and we get the direct major inbox of a new user": 
+            "and we get the direct major inbox of a new user":
             sizeFeed("/api/user/bigredchicken/inbox/direct/major", 1)
         },
         "and we get more new credentials": {
@@ -294,7 +286,7 @@ suite.addBatch({
                 }
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

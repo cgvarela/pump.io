@@ -16,17 +16,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     Step = require("step"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     http = require("http"),
     version = require("../lib/version").version,
     urlparse = require("url").parse,
     httputil = require("./lib/http"),
     oauthutil = require("./lib/oauth"),
+    apputil = require("./lib/app"),
     actutil = require("./lib/activity"),
-    setupApp = oauthutil.setupApp,
+    withAppSetup = apputil.withAppSetup,
     register = oauthutil.register,
     newClient = oauthutil.newClient,
     newPair = oauthutil.newPair,
@@ -46,19 +49,8 @@ var makeCred = function(cl, pair) {
 
 // A batch for testing that updated information is updated
 
-suite.addBatch({
-    "When we set up the app": {
-        topic: function() {
-            setupApp(this.callback);
-        },
-        teardown: function(app) {
-            if (app && app.close) {
-                app.close();
-            }
-        },
-        "it works": function(err, app) {
-            assert.ifError(err);
-        },
+suite.addBatch(
+    withAppSetup({
         "and we get more information about an object": {
             topic: function() {
                 var callback = this.callback,
@@ -220,7 +212,7 @@ suite.addBatch({
                 assert.equal(note.content, "Hello, world.");
             }
         }
-    }
-});
+    })
+);
 
 suite["export"](module);

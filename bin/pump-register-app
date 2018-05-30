@@ -2,7 +2,7 @@
 
 // -*- mode: javascript -*-
 
-// registerapp.js
+// pump-register-app
 //
 // Make a new app key and secret
 //
@@ -20,7 +20,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     url = require("url"),
     common = require("../lib/pumpclient"),
@@ -62,13 +64,13 @@ if (argv.web) {
 
 if (argv.email) {
     args.contacts = argv.email;
-};
+}
 
 Step(
     function() {
         var endpoint = url.format({
-            protocol: ((port == 443) ? "https" : "http"),
-            host: ((port == 80) ? server : server + ":" + port),
+            protocol: ((port === 443) ? "https" : "http"),
+            host: ((port === 80) ? server : server + ":" + port),
             pathname: "/api/client/register"
         });
         postArgs(endpoint, args, this);

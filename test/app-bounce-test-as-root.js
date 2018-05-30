@@ -16,6 +16,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+"use strict";
+
 var assert = require("assert"),
     vows = require("vows"),
     fs = require("fs"),
@@ -29,7 +31,7 @@ var assert = require("assert"),
     oauthutil = require("./lib/oauth"),
     xrdutil = require("./lib/xrd");
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 var suite = vows.describe("bounce 80 to 443 app interface");
 
@@ -48,30 +50,36 @@ suite.addBatch({
                           bounce: true,
                           sockjs: false
                          },
-                makeApp = require("../lib/app").makeApp;
+                makeApp = require("./lib/app").proxyquiredMakeApp;
 
             process.env.NODE_ENV = "test";
 
             makeApp(config, this.callback);
         },
-        "it works": function(err, app) {
+        "it works": function(err, app, bounce) {
             assert.ifError(err);
             assert.isObject(app);
+            assert.isObject(bounce);
         },
         "and we app.run()": {
-            topic: function(app) {
+            topic: function(app, bounce) {
                 var cb = this.callback;
+
                 app.run(function(err) {
                     if (err) {
-                        cb(err, null);
+                        cb(err, null, null);
                     } else {
-                        cb(null, app);
+                        cb(null, app, bounce);
                     }
                 });
             },
-            teardown: function(app) {
+            teardown: function(app, bounce) {
                 if (app && app.close) {
                     app.close();
+                }
+
+                if (bounce && bounce.close) {
+                    bounce.close();
                 }
             },
             "it works": function(err, app) {

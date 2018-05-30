@@ -16,7 +16,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-var _ = require("underscore"),
+"use strict";
+
+var _ = require("lodash"),
     Step = require("step"),
     authc = require("../lib/authc"),
     HTTPError = require("../lib/httperror").HTTPError,
@@ -26,9 +28,9 @@ var _ = require("underscore"),
     setPrincipal = authc.setPrincipal,
     principal = authc.principal;
 
-var addRoutes = function(app) {
+var addRoutes = function(app, session) {
 
-    app.get("/main/confirm/:code", app.session, principal, confirm);
+    app.get("/main/confirm/:code", session, principal, confirm);
 
 };
 
@@ -46,7 +48,7 @@ var confirm = function(req, res, next) {
         function(err, confirms) {
             if (err) throw err;
             if (!_.isArray(confirms) ||
-                confirms.length != 1) {
+                confirms.length !== 1) {
                 throw new HTTPError("Invalid state for confirmation.", 500);
             }
             confirm = confirms[0];
@@ -59,7 +61,7 @@ var confirm = function(req, res, next) {
         function(err, results) {
             if (err) throw err;
             user = results;
-            if (principal && principal.id != user.profile.id) {
+            if (principal && principal.id !== user.profile.id) {
                 throw new HTTPError("This is someone else's confirmation.", 400);
             }
             user.email = confirm.email;
